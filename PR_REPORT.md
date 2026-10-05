@@ -6,13 +6,13 @@
 
 ## How to maintain this report
 
-For **every PR**, append a dated team entry to Section 1 and a dated entry for that same PR under **each of the five members** in Section 2. At the close of each **increment**, update Sections 3, 4, and 5. Add new entries after older entries, immediately before the corresponding `LOG_END` marker. Keep earlier entries so the file remains a chronological history of the project. Use the templates in Section 6.
+For **every PR**, append a dated team entry to Section 1 and a dated entry in Section 2 for the PR author and any other member who contributed to that PR. Do not add entries to members' sections when they did not contribute. At the close of each **increment**, update Sections 3, 4, and 5. Add new entries after older entries, immediately before the corresponding `LOG_END` marker. Keep earlier entries so the file remains a chronological history of the project. Use the templates in Section 6.
 
-Section 1 is a **team PR log**: what each PR accomplished, the state of the whole project after it, shared challenges or scope changes, and verification. Section 2 is a **member PR log**: each member's contribution, challenges, and remaining work for that PR. A member with no contribution or challenge writes `None for this PR` in that field. Each member updates or confirms their own entry before the PR is marked ready to merge. Sections 3–5 record plans, stakeholder communication, and video links **once per increment**, not once per PR.
+Section 1 is a **team PR log**: what each PR accomplished, the state of the whole project after it, shared challenges or scope changes, and verification. Section 2 is a **member PR log**: each contributor's work, challenges, and remaining tasks for that PR. Each contributor updates or confirms their own entry before the PR is marked ready to merge. Sections 3–5 record plans, stakeholder communication, and video links **once per increment**, not once per PR.
 
-Use `YYYY-MM-DD` dates and the same PR number/title in all six PR entries. Link the PR and any relevant functional requirements from [RD_REPORT.md](RD_REPORT.md). Record actual test results; do not describe planned tests as passed. If a PR number is not available yet, use its branch name and replace it when the number is assigned. Give every increment entry its number and closeout date. Never overwrite an older entry; add a dated correction if an earlier fact needs fixing.
+Use `YYYY-MM-DD` dates and the same PR number/title in the team and contributor entries. Link the PR and any relevant functional requirements from [RD_REPORT.md](RD_REPORT.md). Record actual test results; do not describe planned tests as passed. If a PR number is not available yet, use its branch name and replace it when the number is assigned. Give every increment entry its number and closeout date. Never overwrite an older entry; add a dated correction if an earlier fact needs fixing.
 
-**For agents maintaining this file:** Read the PR diff and existing log before drafting the Section 1 entry. Add the five Section 2 entry slots, but leave `Pending member update` for information only that member can provide. Do not infer individual contributions or claim a member had no challenges without their confirmation. A PR entry is complete only when all five member entries have been filled or confirmed by their respective members. For increment closeouts, use the separate templates for Sections 3–5; do not invent a stakeholder message or video link.
+**For agents maintaining this file:** Read the PR diff and existing log before drafting the Section 1 entry. Add a Section 2 entry for the author and for each other member whose contribution is evidenced by the PR; leave member-only information as `Pending member update`. Do not add placeholder entries to noncontributors' sections or infer challenges without a member's confirmation. A PR entry is complete when its author and contributing members have filled or confirmed their entries. For increment closeouts, use the separate templates for Sections 3–5; do not invent a stakeholder message or video link.
 
 ## 1. Project report — team progress log
 
@@ -28,11 +28,11 @@ Append one team snapshot for each PR. State the **cumulative project status afte
 - **Overall project status after this PR:** The backend contains account/profile and image-analysis endpoints, a geospatial database schema, and this nearby lookup. Browser camera/GPS capture, map integration, report persistence, and duplicate handling remain in progress.
 - **Shared challenges, setbacks, or scope changes:** A PostGIS database was unavailable for this work, so the spatial SQL has not been checked with stored sample records.
 - **Verification:** `npm run typecheck` passed; `npm test` passed all four nearby-lookup tests. The tests cover the HTTP contract and query arguments with mocks. A live PostGIS integration test remains to be run.
-- **Immediate follow-up:** Confirm the query against PostGIS sample data; add the PR number when available; collect each member's entry or confirmation before marking this PR ready to merge.
+- **Immediate follow-up:** Confirm the query against PostGIS sample data; add the PR number when available; confirm the author's member entry before marking this PR ready to merge.
 
 **Completion check**
 - [x] The team entry describes overall project status after this PR.
-- [ ] All five member entries for this PR are filled or confirmed by their members.
+- [ ] The author's entry and any other contributor entries are filled or confirmed by their members.
 - [ ] Contributions, challenges, tests, links, and requirement IDs are accurate.
 - [ ] No pending updates or angle-bracket prompts remain in this PR's entries.
 
@@ -40,21 +40,13 @@ Append one team snapshot for each PR. State the **cumulative project status afte
 
 ## 2. Member progress logs by PR
 
-Each member appends one entry for every PR under their own heading, including PRs where they did no work. Entries should describe only that member's contributions and challenges, with dates and links so contributions can be tracked over time.
+Each member appends an entry under their own heading for PRs they contribute to. Entries describe that member's contributions and challenges, with dates and links so contributions can be tracked over time.
 
 ### 2.1 Linh Nguyen — Backend, database, and real-time systems
 
 FSU ID: `ltn23` · GitHub: `@LinhNguyen2901`
 
 <!-- LINH_LOG_START -->
-#### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
-
-- **Contributions:** Pending member update.
-- **Areas and deliverables:** Pending member update.
-- **Challenges and resolution:** Pending member update.
-- **Remaining work or blocker:** Pending member update.
-- **Member confirmation:** Pending member update.
-
 <!-- LINH_LOG_END -->
 
 ### 2.2 Quang Minh Nguyen — AI detection and computer vision
@@ -62,14 +54,6 @@ FSU ID: `ltn23` · GitHub: `@LinhNguyen2901`
 FSU ID: `mqn23` · GitHub: `@QuangMinhNguyen27405`
 
 <!-- QUANG_LOG_START -->
-#### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
-
-- **Contributions:** Pending member update.
-- **Areas and deliverables:** Pending member update.
-- **Challenges and resolution:** Pending member update.
-- **Remaining work or blocker:** Pending member update.
-- **Member confirmation:** Pending member update.
-
 <!-- QUANG_LOG_END -->
 
 ### 2.3 Thien Le — Frontend, maps, and user experience
@@ -77,14 +61,6 @@ FSU ID: `mqn23` · GitHub: `@QuangMinhNguyen27405`
 FSU ID: `cl23m` · GitHub: `@ThienLe3101`
 
 <!-- THIEN_LOG_START -->
-#### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
-
-- **Contributions:** Pending member update.
-- **Areas and deliverables:** Pending member update.
-- **Challenges and resolution:** Pending member update.
-- **Remaining work or blocker:** Pending member update.
-- **Member confirmation:** Pending member update.
-
 <!-- THIEN_LOG_END -->
 
 ### 2.4 Vinh Do — GPS, camera, and geospatial systems
@@ -107,14 +83,6 @@ FSU ID: `vcd23a` · GitHub: `@vdc109`
 FSU ID: `hmv23` · GitHub: `@hoangvu5`
 
 <!-- HOANG_LOG_START -->
-#### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
-
-- **Contributions:** Pending member update.
-- **Areas and deliverables:** Pending member update.
-- **Challenges and resolution:** Pending member update.
-- **Remaining work or blocker:** Pending member update.
-- **Member confirmation:** Pending member update.
-
 <!-- HOANG_LOG_END -->
 
 ## 3. Plans for the next increment
@@ -158,19 +126,19 @@ Copy the relevant templates into the logs above. Use the PR templates for every 
 
 **Completion check**
 - [ ] The team entry describes overall project status after this PR.
-- [ ] All five member entries for this PR are filled or confirmed by their members.
+- [ ] The author's entry and any other contributor entries are filled or confirmed by their members.
 - [ ] Contributions, challenges, tests, links, and requirement IDs are accurate.
 - [ ] No pending updates or angle-bracket prompts remain in this PR's entries.
 ```
 
-### 6.2 Member PR entry — append to each member's Section 2 log
+### 6.2 Member PR entry — append to a contributor's Section 2 log
 
 ```markdown
 #### YYYY-MM-DD — PR #<number>: <short title>
 
-- **Contributions:** <work this member did in this PR, or None for this PR>
-- **Areas and deliverables:** <code, design, requirements, testing, documentation, review, or presentation links; or None for this PR>
-- **Challenges and resolution:** <specific challenge, effect, and response; or None for this PR>
+- **Contributions:** <work this member did in this PR>
+- **Areas and deliverables:** <code, design, requirements, testing, documentation, review, or presentation links>
+- **Challenges and resolution:** <specific challenge, effect, and response; or None if confirmed by the member>
 - **Remaining work or blocker:** <next action or None>
 - **Member confirmation:** <member name and date; Pending member update until confirmed>
 ```
