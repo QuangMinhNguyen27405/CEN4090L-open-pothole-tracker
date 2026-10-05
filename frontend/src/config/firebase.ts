@@ -11,8 +11,14 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-export { app, auth, googleProvider };
+// Public pages and password login do not require Firebase configuration.
+export const getGoogleAuth = () => {
+  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+    throw new Error("Google sign-in is not configured.");
+  }
+  return getAuth(initializeApp(firebaseConfig));
+};
+
+export { googleProvider };

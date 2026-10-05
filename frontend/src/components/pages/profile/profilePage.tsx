@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/auth";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -79,8 +80,11 @@ const ProfilePage = () => {
       onSuccess: () => {
         setIsEditing(false);
       },
-      onError: (error: any) => {
-        alert(error.response?.data?.message || "Failed to update profile");
+      onError: (error) => {
+        const message = axios.isAxiosError<{ message?: string }>(error)
+          ? error.response?.data?.message
+          : undefined;
+        alert(message || "Failed to update profile");
       },
     });
   };
