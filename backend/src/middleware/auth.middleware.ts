@@ -60,7 +60,7 @@ export const getUserFromRequest = async (req: Request) => {
   }
 };
 
-export const authenticate: RequestHandler = async (req, res, next) => {
+export const authenticate: RequestHandler<any, any, any, any> = async (req, res, next) => {
   const user = await getUserFromRequest(req);
   if (!user) {
     res.status(401).json({ message: "Not authenticated" });
@@ -71,14 +71,14 @@ export const authenticate: RequestHandler = async (req, res, next) => {
 };
 
 // Like authenticate, but lets anonymous requests through.
-export const attachUserFromToken: RequestHandler = async (req, _res, next) => {
+export const attachUserFromToken: RequestHandler<any, any, any, any> = async (req, _res, next) => {
   const user = await getUserFromRequest(req);
   if (user) req.user = { id: user.id, role: user.role };
   next();
 };
 
 // Use after authenticate.
-export const requireAdmin: RequestHandler = (req, res, next) => {
+export const requireAdmin: RequestHandler<any, any, any, any> = (req, res, next) => {
   if (req.user?.role !== "admin") {
     res.status(403).json({ message: "Admin access required" });
     return;
