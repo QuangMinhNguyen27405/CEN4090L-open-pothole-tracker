@@ -1,122 +1,87 @@
-import { handleError } from "@/utils/errors";
-import { NextFunction, Request, RequestHandler, Response } from "express";
-import mongoSanitize from "express-mongo-sanitize";
+import type { CookieOptions, Request, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "@/config/envs";
-import { UserModel } from "@/models/user.model.js";
+import { UserModel, type Role } from "../models/user.model.ts";
 
 declare global {
   namespace Express {
     interface Request {
-      auth?: { userId: string };
-      user?: { id: string; role?: string };
-      service?: { role: string };
+      user?: { id: number; role: Role };
     }
   }
 }
 
+export const ACCESS_TOKEN_COOKIE = "access_token";
+
+export const accessTokenCookieOptions: CookieOptions = {
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+};
+
+const jwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET is not set");
+  return secret;
+};
+
+export const signAccessToken = (userId: number): string =>
+  jwt.sign({ id: userId }, jwtSecret(), { expiresIn: "2w" });
+
 const getAccessToken = (req: Request): string | undefined => {
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
+  if (authHeader?.startsWith("Bearer ")) {
     return authHeader.substring(7);
   }
 
-  const anyReq = req as any;
-  const cookies = anyReq.cookies as Record<string, string> | undefined;
-  if (
-    cookies &&
-    typeof cookies === "object" &&
-    typeof cookies["access_token"] === "string"
-  ) {
-    return cookies["access_token"];
-  }
-  const cookieHeader = req.headers["cookie"];
+  const cookieHeader = req.headers.cookie;
   if (!cookieHeader) return undefined;
-  const pairs = cookieHeader.split(/;\s*/);
-  for (const p of pairs) {
-    const idx = p.indexOf("=");
+  for (const pair of cookieHeader.split(/;\s*/)) {
+    const idx = pair.indexOf("=");
     if (idx === -1) continue;
-    const key = p.substring(0, idx).trim();
-    const val = decodeURIComponent(p.substring(idx + 1));
-    if (key === "access_token") return val;
+    if (pair.substring(0, idx).trim() === ACCESS_TOKEN_COOKIE) {
+      return decodeURIComponent(pair.substring(idx + 1));
+    }
   }
   return undefined;
 };
 
-export const authenticate = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+// Resolves the active user behind the request's token, or null.
+export const getUserFromRequest = async (req: Request) => {
+  const token = getAccessToken(req);
+  if (!token) return null;
   try {
-    const token = getAccessToken(req);
-    if (!token) {
-      res.status(401).json({ message: "Not authenticated" });
-      return;
-    }
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    const user = await UserModel.findById(decoded.id).lean();
-    if (!user) {
-      res.status(401).json({ message: "User not found" });
-      return;
-    }
-    if (user.isActive === false) {
-      res.status(403).json({ message: "Account is deactivated" });
-      return;
-    }
-    req.auth = { userId: decoded.id };
-    req.user = { id: decoded.id, role: user.role };
-    if (req.body) {
-      (req.body as any).userId = decoded.id;
-    }
-    next();
-  } catch (error) {
-    console.error("Auth middleware error:", error);
-    res.status(401).json({ message: "Invalid token" });
+    const decoded = jwt.verify(token, jwtSecret()) as { id: number };
+    const user = await UserModel.findById(decoded.id);
+    return user?.isActive ? user : null;
+  } catch (err) {
+    if (err instanceof jwt.JsonWebTokenError) return null;
+    throw err;
   }
 };
 
-export const attachUserFromToken = async (
-  req: Request,
-  _res: Response,
-  next: NextFunction
-) => {
-  try {
-    const token = getAccessToken(req);
-    if (!token) return next();
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    const user = await UserModel.findById(decoded.id).lean();
-    if (!user || user.isActive === false) return next();
-    req.auth = { userId: decoded.id };
-    req.user = { id: decoded.id, role: user.role };
-    if (req.body) {
-      (req.body as any).userId = decoded.id;
-    }
-    next();
-  } catch {
-    next();
+export const authenticate: RequestHandler = async (req, res, next) => {
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    res.status(401).json({ message: "Not authenticated" });
+    return;
   }
+  req.user = { id: user.id, role: user.role };
+  next();
 };
 
-type AsyncRequestHandler = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => Promise<void>;
-
-export const wrappedHandlers = (
-  handlers: AsyncRequestHandler[]
-): RequestHandler[] => {
-  return handlers.map((handler: AsyncRequestHandler) => {
-    return (req: Request, res: Response, next: NextFunction) => {
-      handler(req, res, next).catch(next);
-    };
-  });
+// Like authenticate, but lets anonymous requests through.
+export const attachUserFromToken: RequestHandler = async (req, _res, next) => {
+  const user = await getUserFromRequest(req);
+  if (user) req.user = { id: user.id, role: user.role };
+  next();
 };
 
-export const sanitizeMiddleware = () =>
-  mongoSanitize({
-    onSanitize: ({ req, key }) => {
-      console.warn(`This request [${key}] is sanitized`, req);
-    },
-  });
+// Use after authenticate.
+export const requireAdmin: RequestHandler = (req, res, next) => {
+  if (req.user?.role !== "admin") {
+    res.status(403).json({ message: "Admin access required" });
+    return;
+  }
+  next();
+};

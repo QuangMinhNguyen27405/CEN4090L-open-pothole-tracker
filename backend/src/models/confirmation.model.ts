@@ -1,47 +1,59 @@
-import mongoose, { Document } from "mongoose";
+import { pool } from "../db.ts";
 
-export interface IConfirmation extends Document {
-  potholeId: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
-  status: "still_there" | "not_there";
+export type ConfirmationStatus = "still_there" | "not_there";
+
+export type Confirmation = {
+  potholeId: number;
+  userId: number;
+  status: ConfirmationStatus;
   confirmedAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
+};
 
-const ConfirmationSchema = new mongoose.Schema<IConfirmation>({
-  potholeId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Pothole",
-    required: true,
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  status: {
-    type: String,
-    enum: ["still_there", "not_there"],
-    required: true,
-  },
-  confirmedAt: {
-    type: Date,
-    default: Date.now,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+export type ConfirmationSummary = {
+  still_there: number;
+  not_there: number;
+  total: number;
+};
 
-ConfirmationSchema.index({ potholeId: 1, userId: 1 }, { unique: true });
+export const CONFIRMATION_COLUMNS = `
+  pothole_id AS "potholeId",
+  user_id AS "userId",
+  CASE WHEN still_there THEN 'still_there' ELSE 'not_there' END AS status,
+  created_at AS "confirmedAt"`;
 
-export const ConfirmationModel = mongoose.model<IConfirmation>(
-  "Confirmation",
-  ConfirmationSchema
-);
+export const ConfirmationModel = {
+  // Returns null if this user already confirmed this pothole.
+  create: async (data: {
+    potholeId: number;
+    userId: number;
+    status: ConfirmationStatus;
+  }): Promise<Confirmation | null> => {
+    const { rows } = await pool.query<Confirmation>(
+      `INSERT INTO confirmations (pothole_id, user_id, still_there)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (pothole_id, user_id) DO NOTHING
+       RETURNING ${CONFIRMATION_COLUMNS}`,
+      [data.potholeId, data.userId, data.status === "still_there"]
+    );
+    return rows[0] ?? null;
+  },
+
+  findByPothole: async (potholeId: number): Promise<Confirmation[]> => {
+    const { rows } = await pool.query<Confirmation>(
+      `SELECT ${CONFIRMATION_COLUMNS} FROM confirmations
+       WHERE pothole_id = $1
+       ORDER BY created_at DESC`,
+      [potholeId]
+    );
+    return rows;
+  },
+
+  summarize: (confirmations: Confirmation[]): ConfirmationSummary => {
+    const stillThere = confirmations.filter((c) => c.status === "still_there").length;
+    return {
+      still_there: stillThere,
+      not_there: confirmations.length - stillThere,
+      total: confirmations.length,
+    };
+  },
+};

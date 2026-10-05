@@ -1,238 +1,137 @@
-import { UserModel } from "@/models/user.model";
-import { DuplicateResourceError, UnauthorizedError } from "@/utils/errors";
-import { Request, Response } from "express";
-import zod from "zod";
+import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { JWT_SECRET, NODE_ENV } from "@/config/envs";
-import { getAuth } from "firebase-admin/auth";
-import firebaseApp from "@/config/firebase";
+import { z } from "zod";
+import { getFirebaseAuth } from "../config/firebase.ts";
+import {
+  ACCESS_TOKEN_COOKIE,
+  accessTokenCookieOptions,
+  getUserFromRequest,
+  signAccessToken,
+} from "../middleware/auth.middleware.ts";
+import { UserModel, type User } from "../models/user.model.ts";
+import { toUserResponse } from "./user.controller.ts";
 
-const SignupSchema = zod.object({
-  email: zod.string(),
-  username: zod.string().min(2).max(100),
-  password: zod.string().min(6).max(100),
+export const SignupSchema = z.object({
+  email: z.email(),
+  username: z.string().min(2).max(100),
+  password: z.string().min(6).max(100),
 });
 
-const LoginSchema = zod.object({
-  email: zod.string(),
-  password: zod.string().min(6).max(100),
+export const LoginSchema = z.object({
+  email: z.email(),
+  password: z.string().min(1),
 });
 
-const GoogleLoginSchema = zod.object({
-  token: zod.string(),
+export const GoogleLoginSchema = z.object({
+  token: z.string(),
 });
+
+const UNIQUE_VIOLATION = "23505";
+
+const sendLoggedIn = (res: Response, user: User, message: string) => {
+  res
+    .cookie(ACCESS_TOKEN_COOKIE, signAccessToken(user.id), accessTokenCookieOptions)
+    .json({ message, data: toUserResponse(user) });
+};
 
 export const AuthController = {
-  signup: async (req: Request, res: Response) => {
-    const { email, username, password } = SignupSchema.parse(req.body);
+  async signup(req: Request, res: Response) {
+    const { email, username, password } = req.body as z.infer<typeof SignupSchema>;
 
-    const isExistingEmail = await UserModel.findOne({ email });
-    if (isExistingEmail) {
-      throw new DuplicateResourceError("Email already exists", { email });
+    if (await UserModel.findByEmail(email)) {
+      res.status(409).json({ message: "Email already exists" });
+      return;
     }
-
-    const encryptedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await UserModel.create({
-      email,
-      username,
-      encryptedPassword,
-    });
-
-    res.status(201).json({
-      message: "User created successfully",
-      data: {
-        id: (newUser._id as any).toString(),
-        email: newUser.email,
-        username: newUser.username,
-        role: newUser.role,
-      },
-    });
-  },
-  login: async (req: Request, res: Response) => {
-    const { email, password } = LoginSchema.parse(req.body);
-
-    const user = await UserModel.findOne({ email: email });
-
-    if (!user) {
-      throw new UnauthorizedError("Invalid email or password", { email });
-    }
-
-    if (user.isActive === false) {
-      throw new UnauthorizedError("Account is deactivated", { email });
-    }
-
-    if (user.firebaseId && !user.encryptedPassword) {
-      throw new UnauthorizedError("Please login with Google", { email });
-    }
-
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      user.encryptedPassword || ""
-    );
-    if (!isPasswordValid) {
-      throw new UnauthorizedError("Invalid email or password", { email });
-    }
-
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "2w" });
-
-    res
-      .cookie("access_token", token, {
-        httpOnly: true,
-        secure: NODE_ENV === "production",
-      })
-      .status(200)
-      .json({
-        message: "Login successful",
-        data: {
-          id: (user._id as any).toString(),
-          email: user.email,
-          username: user.username,
-          role: user.role,
-          avatarUrl: user.avatarUrl || "",
-        },
-      });
-  },
-  googleLogin: async (req: Request, res: Response) => {
-    const { token } = GoogleLoginSchema.parse(req.body);
-
-    let email: string | undefined, uid: string, picture: string | undefined;
 
     try {
-      ({ email, uid, picture } = await getAuth(firebaseApp).verifyIdToken(
-        token
-      ));
-      if (!email) {
-        throw new UnauthorizedError("Email not found in Firebase token", {});
+      const user = await UserModel.create({
+        email,
+        username,
+        passwordHash: await bcrypt.hash(password, 10),
+      });
+      res.status(201).json({ message: "User created successfully", data: toUserResponse(user) });
+    } catch (err) {
+      if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
+        res.status(409).json({ message: "Email already exists" });
+        return;
       }
-    } catch (error) {
-      console.error("Error verifying Firebase ID token:", error);
-      throw new UnauthorizedError("Invalid Firebase ID token", { error });
+      throw err;
+    }
+  },
+
+  async login(req: Request, res: Response) {
+    const { email, password } = req.body as z.infer<typeof LoginSchema>;
+
+    const user = await UserModel.findByEmail(email);
+    if (!user || !user.isActive) {
+      res.status(401).json({ message: "Invalid email or password" });
+      return;
+    }
+    if (!user.passwordHash) {
+      res.status(401).json({ message: "Please login with Google" });
+      return;
+    }
+    if (!(await bcrypt.compare(password, user.passwordHash))) {
+      res.status(401).json({ message: "Invalid email or password" });
+      return;
     }
 
-    const username = await getAuth()
-      .getUser(uid)
-      .then((user) => user.displayName || "");
+    sendLoggedIn(res, user, "Login successful");
+  },
 
-    let user = await UserModel.findOne({ email });
+  async googleLogin(req: Request, res: Response) {
+    const { token } = req.body as z.infer<typeof GoogleLoginSchema>;
+    if (!process.env.FIREBASE_APPLICATION_CREDENTIALS) {
+      res.status(503).json({ message: "Google login is not configured" });
+      return;
+    }
+    const firebaseAuth = getFirebaseAuth();
+
+    let decoded;
+    try {
+      decoded = await firebaseAuth.verifyIdToken(token);
+    } catch {
+      res.status(401).json({ message: "Invalid Firebase ID token" });
+      return;
+    }
+
+    const { uid, email, picture, name } = decoded;
+    if (!email) {
+      res.status(401).json({ message: "Email not found in Firebase token" });
+      return;
+    }
+
+    let user: User | null = await UserModel.findByEmail(email);
     if (!user) {
       user = await UserModel.create({
         email,
-        username: username,
-        firebaseId: uid,
-        encryptedPassword: "",
-        avatarUrl: picture,
+        username: name ?? email.split("@")[0]!,
+        firebaseUid: uid,
+        avatarUrl: picture ?? null,
       });
-    } else {
-      if (!user.firebaseId) {
-        throw new UnauthorizedError("Please login with email and password", {
-          email,
-        });
-      }
-      if (user.isActive === false) {
-        throw new UnauthorizedError("Account is deactivated", { email });
-      }
-    }
-
-    const jwtToken = jwt.sign({ id: user._id }, JWT_SECRET, {
-      expiresIn: "2w",
-    });
-
-    res
-      .cookie("access_token", jwtToken, {
-        httpOnly: true,
-        secure: NODE_ENV === "production",
-      })
-      .status(200)
-      .json({
-        message: "Google login successful",
-        data: {
-          id: (user._id as any).toString(),
-          email: user.email,
-          username: user.username,
-          role: user.role,
-          avatarUrl: user.avatarUrl || "",
-        },
-      });
-  },
-  logout: async (req: Request, res: Response) => {
-    res
-      .clearCookie("access_token", {
-        httpOnly: true,
-        sameSite: "strict",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-      })
-      .status(200)
-      .json({ message: "Logout successful" });
-  },
-  me: async (req: Request, res: Response) => {
-    const authHeader = req.headers.authorization;
-    let token: string | undefined;
-
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.substring(7);
-    } else {
-      const anyReq = req as any;
-      const cookies = anyReq.cookies as Record<string, string> | undefined;
-      if (
-        cookies &&
-        typeof cookies === "object" &&
-        typeof cookies["access_token"] === "string"
-      ) {
-        token = cookies["access_token"];
-      } else {
-        const cookieHeader = req.headers["cookie"];
-        if (cookieHeader) {
-          const pairs = cookieHeader.split(/;\s*/);
-          for (const p of pairs) {
-            const idx = p.indexOf("=");
-            if (idx === -1) continue;
-            const key = p.substring(0, idx).trim();
-            const val = decodeURIComponent(p.substring(idx + 1));
-            if (key === "access_token") {
-              token = val;
-              break;
-            }
-          }
-        }
-      }
-    }
-
-    if (!token) {
-      res.status(401).json({
-        message: "Not authenticated",
-      });
+    } else if (!user.firebaseUid) {
+      res.status(401).json({ message: "Please login with email and password" });
+      return;
+    } else if (!user.isActive) {
+      res.status(401).json({ message: "Account is deactivated" });
       return;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    const user = await UserModel.findById(decoded.id);
+    sendLoggedIn(res, user, "Google login successful");
+  },
 
+  async logout(_req: Request, res: Response) {
+    res
+      .clearCookie(ACCESS_TOKEN_COOKIE, accessTokenCookieOptions)
+      .json({ message: "Logout successful", data: {} });
+  },
+
+  async me(req: Request, res: Response) {
+    const user = await getUserFromRequest(req);
     if (!user) {
-      res.status(401).json({
-        message: "User not found",
-      });
+      res.status(401).json({ message: "Not authenticated" });
       return;
     }
-
-    if (user.isActive === false) {
-      res.status(403).json({
-        message: "Account is deactivated",
-      });
-      return;
-    }
-
-    res.status(200).json({
-      message: "User retrieved successfully",
-      user: {
-        id: (user._id as any).toString(),
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        avatarUrl: user.avatarUrl || "",
-      },
-    });
+    res.json({ message: "User retrieved successfully", user: toUserResponse(user) });
   },
 };

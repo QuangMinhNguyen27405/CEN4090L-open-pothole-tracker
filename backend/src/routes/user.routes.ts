@@ -1,38 +1,36 @@
-import { UserController } from "@/controller/user.controller";
-import { wrappedHandlers } from "@/middleware/utils";
-import { authenticate } from "@/middleware/auth.middleware";
 import { Router } from "express";
+import {
+  ChangePasswordSchema,
+  UpdateMeSchema,
+  UpdateUserSchema,
+  UserController,
+} from "../controllers/user.controller.ts";
+import { authenticate } from "../middleware/auth.middleware.ts";
+import { idParams, validate } from "../middleware/validate.middleware.ts";
 
-export const UserRoutes = Router();
+export const userRouter = Router();
 
-// Current user profile endpoints (must be before /:userId)
-UserRoutes.get("/me", authenticate, wrappedHandlers([UserController.getMe]));
-
-UserRoutes.put("/me", authenticate, wrappedHandlers([UserController.updateMe]));
-
-UserRoutes.put(
+// /me routes must come before /:id
+userRouter.get("/me", authenticate, UserController.getMe);
+userRouter.put("/me", authenticate, validate({ body: UpdateMeSchema }), UserController.updateMe);
+userRouter.put(
   "/me/password",
   authenticate,
-  wrappedHandlers([UserController.changePassword])
+  validate({ body: ChangePasswordSchema }),
+  UserController.changePassword,
 );
+userRouter.get("/me/stats", authenticate, UserController.getMyStats);
 
-UserRoutes.get(
-  "/me/stats",
+userRouter.get("/:id", validate({ params: idParams }), UserController.getUser);
+userRouter.put(
+  "/:id",
   authenticate,
-  wrappedHandlers([UserController.getMyStats])
+  validate({ params: idParams, body: UpdateUserSchema }),
+  UserController.updateUser,
 );
-
-// Generic user endpoints
-UserRoutes.get("/:userId", wrappedHandlers([UserController.getUser]));
-
-UserRoutes.put(
-  "/:userId",
+userRouter.delete(
+  "/:id",
   authenticate,
-  wrappedHandlers([UserController.updateUser])
-);
-
-UserRoutes.delete(
-  "/:userId",
-  authenticate,
-  wrappedHandlers([UserController.deleteUser])
+  validate({ params: idParams }),
+  UserController.deleteUser,
 );

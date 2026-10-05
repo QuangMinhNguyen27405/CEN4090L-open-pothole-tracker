@@ -1,15 +1,16 @@
-import { AuthController } from "@/controller/auth.controller";
-import { wrappedHandlers } from "@/middleware/utils";
 import { Router } from "express";
+import {
+  AuthController,
+  GoogleLoginSchema,
+  LoginSchema,
+  SignupSchema,
+} from "../controllers/auth.controller.ts";
+import { validate } from "../middleware/validate.middleware.ts";
 
-export const AuthRoutes = Router();
+export const authRouter = Router();
 
-AuthRoutes.post("/signup", wrappedHandlers([AuthController.signup]));
-
-AuthRoutes.post("/login", wrappedHandlers([AuthController.login]));
-
-AuthRoutes.post("/google", wrappedHandlers([AuthController.googleLogin]));
-
-AuthRoutes.post("/logout", wrappedHandlers([AuthController.logout]));
-
-AuthRoutes.get("/me", wrappedHandlers([AuthController.me]));
+authRouter.post("/signup", validate({ body: SignupSchema }), AuthController.signup);
+authRouter.post("/login", validate({ body: LoginSchema }), AuthController.login);
+authRouter.post("/google", validate({ body: GoogleLoginSchema }), AuthController.googleLogin);
+authRouter.post("/logout", AuthController.logout);
+authRouter.get("/me", AuthController.me);

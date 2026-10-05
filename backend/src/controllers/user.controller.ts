@@ -1,261 +1,138 @@
-import { Request, Response } from "express";
-import { UserModel } from "@/models/user.model.js";
-import { PotholeModel } from "@/models/pothole.model.js";
-import { DetectionSessionModel } from "@/models/detectionSession.model.js";
-import zod from "zod";
+import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
-import mongoose from "mongoose";
+import { z } from "zod";
+import { UserModel, type User } from "../models/user.model.ts";
 
-const GetSchema = zod.object({
-  userId: zod.string(),
-});
-
-const ParamsSchema = zod.object({
-  userId: zod.string().min(1),
-});
-
-const UpdateSchema = zod
+export const UpdateUserSchema = z
   .object({
-    username: zod.string().min(2).max(100).optional(),
-    avatarUrl: zod.string().url().optional(),
+    username: z.string().min(2).max(100).optional(),
+    avatarUrl: z.url().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one field must be provided",
-    path: ["username", "avatarUrl"],
   });
 
-const UpdateMeSchema = zod
+export const UpdateMeSchema = z
   .object({
-    username: zod.string().min(2).max(100).optional(),
-    email: zod.string().email().optional(),
-    avatarUrl: zod.string().url().optional(),
+    username: z.string().min(2).max(100).optional(),
+    email: z.email().optional(),
+    avatarUrl: z.url().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one field must be provided",
-    path: ["username", "email", "avatarUrl"],
   });
 
-const ChangePasswordSchema = zod.object({
-  currentPassword: zod.string().min(6),
-  newPassword: zod.string().min(6),
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(6),
+  newPassword: z.string().min(6).max(100),
 });
+
+export const toUserResponse = (user: User) => ({
+  id: String(user.id),
+  email: user.email,
+  username: user.username,
+  role: user.role,
+  avatarUrl: user.avatarUrl ?? "",
+});
+
+const canManage = (req: Request, userId: number) =>
+  req.user?.id === userId || req.user?.role === "admin";
 
 export const UserController = {
-  getMe: async (req: Request, res: Response) => {
-    const userId = req.user?.id;
-    if (!userId) {
-      res.status(401).json({ message: "Not authenticated" });
-      return;
-    }
-
-    const user = await UserModel.findOne({
-      _id: userId,
-      isActive: true,
-    }).lean();
-
+  async getMe(req: Request, res: Response) {
+    const user = await UserModel.findById(req.user!.id);
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;
     }
-
-    res.status(200).json({
-      message: "Profile retrieved successfully",
-      data: {
-        id: (user._id as any).toString(),
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        avatarUrl: user.avatarUrl || "",
-      },
-    });
+    res.json({ message: "Profile retrieved successfully", data: toUserResponse(user) });
   },
 
-  updateMe: async (req: Request, res: Response) => {
-    const userId = req.user?.id;
-    if (!userId) {
-      res.status(401).json({ message: "Not authenticated" });
-      return;
-    }
-
-    const payload = UpdateMeSchema.parse(req.body);
+  async updateMe(req: Request, res: Response) {
+    const payload = req.body as z.infer<typeof UpdateMeSchema>;
 
     if (payload.email) {
-      const existingUser = await UserModel.findOne({
-        email: payload.email,
-        _id: { $ne: userId },
-        isActive: true,
-      });
-
-      if (existingUser) {
+      const existing = await UserModel.findByEmail(payload.email);
+      if (existing && existing.id !== req.user!.id) {
         res.status(400).json({ message: "Email already in use" });
         return;
       }
     }
 
-    const updated = await UserModel.findOneAndUpdate(
-      { _id: userId, isActive: true },
-      { ...payload, updatedAt: new Date() },
-      { new: true }
-    );
-
+    const updated = await UserModel.update(req.user!.id, payload);
     if (!updated) {
       res.status(404).json({ message: "User not found" });
       return;
     }
-
-    res.status(200).json({
-      message: "Profile updated successfully",
-      data: {
-        id: (updated._id as any).toString(),
-        email: updated.email,
-        username: updated.username,
-        role: updated.role,
-        avatarUrl: updated.avatarUrl || "",
-      },
-    });
+    res.json({ message: "Profile updated successfully", data: toUserResponse(updated) });
   },
 
-  changePassword: async (req: Request, res: Response) => {
-    const userId = req.user?.id;
-    if (!userId) {
-      res.status(401).json({ message: "Not authenticated" });
-      return;
-    }
+  async changePassword(req: Request, res: Response) {
+    const { currentPassword, newPassword } = req.body as z.infer<typeof ChangePasswordSchema>;
 
-    const { currentPassword, newPassword } = ChangePasswordSchema.parse(
-      req.body
-    );
-
-    const user = await UserModel.findOne({
-      _id: userId,
-      isActive: true,
-    });
-
+    const user = await UserModel.findByIdWithPassword(req.user!.id);
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;
     }
-
-    if (!user.encryptedPassword) {
-      res
-        .status(400)
-        .json({ message: "Cannot change password for OAuth accounts" });
+    if (!user.passwordHash) {
+      res.status(400).json({ message: "Cannot change password for Google accounts" });
       return;
     }
-
-    const isMatch = await bcrypt.compare(
-      currentPassword,
-      user.encryptedPassword
-    );
-    if (!isMatch) {
+    if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
       res.status(400).json({ message: "Current password is incorrect" });
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    await UserModel.findByIdAndUpdate(userId, {
-      encryptedPassword: hashedPassword,
-      updatedAt: new Date(),
-    });
-
-    res.status(200).json({ message: "Password changed successfully" });
+    await UserModel.setPassword(user.id, await bcrypt.hash(newPassword, 10));
+    res.json({ message: "Password changed successfully", data: {} });
   },
 
-  getMyStats: async (req: Request, res: Response) => {
-    const userId = req.user?.id;
-    if (!userId) {
-      res.status(401).json({ message: "Not authenticated" });
-      return;
-    }
-
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-
-    const potholesDetected = await PotholeModel.countDocuments({
-      userId: userObjectId,
-    });
-
-    // Count detection sessions
-    const detectionSessions = await DetectionSessionModel.countDocuments({
-      userId: userObjectId,
-    });
-
-    const sessionsData = await DetectionSessionModel.aggregate([
-      { $match: { userId: userObjectId } },
-      { $group: { _id: null, total: { $sum: "$totalDetections" } } },
-    ]);
-
-    const totalDetections = sessionsData.length > 0 ? sessionsData[0].total : 0;
-
-    res.status(200).json({
+  async getMyStats(req: Request, res: Response) {
+    const stats = await UserModel.getStats(req.user!.id);
+    res.json({
       message: "Statistics retrieved successfully",
-      data: {
-        potholesDetected,
-        detectionSessions,
-        totalDetections,
-      },
+      // detectionSessions stays 0 until detection sessions are stored
+      data: { ...stats, detectionSessions: 0 },
     });
   },
 
-  getUser: async (req: Request, res: Response) => {
-    const { userId } = ParamsSchema.parse(req.params);
-    const user = await UserModel.findOne({
-      _id: userId,
-      isActive: true,
-    }).lean();
-    if (!user) {
+  async getUser(req: Request, res: Response) {
+    const user = await UserModel.findById(Number(req.params.id));
+    if (!user?.isActive) {
       res.status(404).json({ message: "User not found" });
       return;
     }
-    res.status(200).json({
-      message: "User retrieved successfully",
-      data: {
-        id: (user._id as any).toString(),
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        avatarUrl: user.avatarUrl || "",
-      },
-    });
+    const { email: _email, ...publicProfile } = toUserResponse(user);
+    res.json({ message: "User retrieved successfully", data: publicProfile });
   },
-  updateUser: async (req: Request, res: Response) => {
-    const { userId } = ParamsSchema.parse(req.params);
 
-    const payload = UpdateSchema.parse(req.body);
+  async updateUser(req: Request, res: Response) {
+    const id = Number(req.params.id);
+    if (!canManage(req, id)) {
+      res.status(403).json({ message: "Not allowed to update this user" });
+      return;
+    }
 
-    const updated = await UserModel.findOneAndUpdate(
-      { _id: userId, isActive: true },
-      { ...payload, updatedAt: new Date() },
-      { new: true }
-    );
-
+    const updated = await UserModel.update(id, req.body as z.infer<typeof UpdateUserSchema>);
     if (!updated) {
       res.status(404).json({ message: "User not found" });
       return;
     }
-
-    res.status(200).json({
-      message: "User updated successfully",
-      data: {
-        id: (updated._id as any).toString(),
-        email: updated.email,
-        username: updated.username,
-        role: updated.role,
-        avatarUrl: updated.avatarUrl || "",
-      },
-    });
+    res.json({ message: "User updated successfully", data: toUserResponse(updated) });
   },
-  deleteUser: async (req: Request, res: Response) => {
-    const { userId } = ParamsSchema.parse(req.params);
-    const updated = await UserModel.findByIdAndUpdate(
-      userId,
-      { isActive: false, updatedAt: new Date() },
-      { new: true }
-    );
-    if (!updated) {
+
+  async deleteUser(req: Request, res: Response) {
+    const id = Number(req.params.id);
+    if (!canManage(req, id)) {
+      res.status(403).json({ message: "Not allowed to delete this user" });
+      return;
+    }
+
+    if (!(await UserModel.deactivate(id))) {
       res.status(404).json({ message: "User not found" });
       return;
     }
-    res.status(200).json({ message: "User deleted successfully" });
+    res.json({ message: "User deleted successfully", data: {} });
   },
 };
