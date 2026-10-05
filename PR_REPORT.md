@@ -16,9 +16,26 @@ Use `YYYY-MM-DD` dates and the same PR number/title in all six PR entries. Link 
 
 ## 1. Project report — team progress log
 
-Append one team snapshot for each PR. State the **cumulative project status after the PR** as well as the progress made in it. The log starts empty because no completed PR entry has been supplied for this report.
+Append one team snapshot for each PR. State the **cumulative project status after the PR** as well as the progress made in it. Branch entries remain pending until a PR number is assigned and member updates are confirmed.
 
 <!-- TEAM_LOG_START -->
+### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
+
+- **PR:** Pending; [review branch changes](https://github.com/QuangMinhNguyen27405/CEN4090L-open-pothole-tracker/compare/main...feat/nearby-potholes-increment-1) · **Author:** Vinh Do (`@vdc109`)
+- **Related issues and requirements:** [FR-07 and FR-02](RD_REPORT.md#2-functional-requirements)
+- **Purpose:** Let the application find stored potholes near a GPS coordinate using a bounded distance search.
+- **Team accomplishments in this PR:** Added a geospatial increment plan, a validated `GET /api/potholes/nearby` endpoint, a PostGIS distance query ordered by proximity, and four automated tests.
+- **Overall project status after this PR:** The backend contains account/profile and image-analysis endpoints, a geospatial database schema, and this nearby lookup. Browser camera/GPS capture, map integration, report persistence, and duplicate handling remain in progress.
+- **Shared challenges, setbacks, or scope changes:** A PostGIS database was unavailable for this work, so the spatial SQL has not been checked with stored sample records.
+- **Verification:** `npm run typecheck` passed; `npm test` passed all four nearby-lookup tests. The tests cover the HTTP contract and query arguments with mocks. A live PostGIS integration test remains to be run.
+- **Immediate follow-up:** Confirm the query against PostGIS sample data; add the PR number when available; collect each member's entry or confirmation before marking this PR ready to merge.
+
+**Completion check**
+- [x] The team entry describes overall project status after this PR.
+- [ ] All five member entries for this PR are filled or confirmed by their members.
+- [ ] Contributions, challenges, tests, links, and requirement IDs are accurate.
+- [ ] No pending updates or angle-bracket prompts remain in this PR's entries.
+
 <!-- TEAM_LOG_END -->
 
 ## 2. Member progress logs by PR
@@ -30,6 +47,14 @@ Each member appends one entry for every PR under their own heading, including PR
 FSU ID: `ltn23` · GitHub: `@LinhNguyen2901`
 
 <!-- LINH_LOG_START -->
+#### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
+
+- **Contributions:** Pending member update.
+- **Areas and deliverables:** Pending member update.
+- **Challenges and resolution:** Pending member update.
+- **Remaining work or blocker:** Pending member update.
+- **Member confirmation:** Pending member update.
+
 <!-- LINH_LOG_END -->
 
 ### 2.2 Quang Minh Nguyen — AI detection and computer vision
@@ -37,6 +62,14 @@ FSU ID: `ltn23` · GitHub: `@LinhNguyen2901`
 FSU ID: `mqn23` · GitHub: `@QuangMinhNguyen27405`
 
 <!-- QUANG_LOG_START -->
+#### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
+
+- **Contributions:** Pending member update.
+- **Areas and deliverables:** Pending member update.
+- **Challenges and resolution:** Pending member update.
+- **Remaining work or blocker:** Pending member update.
+- **Member confirmation:** Pending member update.
+
 <!-- QUANG_LOG_END -->
 
 ### 2.3 Thien Le — Frontend, maps, and user experience
@@ -44,6 +77,14 @@ FSU ID: `mqn23` · GitHub: `@QuangMinhNguyen27405`
 FSU ID: `cl23m` · GitHub: `@ThienLe3101`
 
 <!-- THIEN_LOG_START -->
+#### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
+
+- **Contributions:** Pending member update.
+- **Areas and deliverables:** Pending member update.
+- **Challenges and resolution:** Pending member update.
+- **Remaining work or blocker:** Pending member update.
+- **Member confirmation:** Pending member update.
+
 <!-- THIEN_LOG_END -->
 
 ### 2.4 Vinh Do — GPS, camera, and geospatial systems
@@ -51,6 +92,14 @@ FSU ID: `cl23m` · GitHub: `@ThienLe3101`
 FSU ID: `vcd23a` · GitHub: `@vdc109`
 
 <!-- VINH_LOG_START -->
+#### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
+
+- **Contributions:** Added a coordinate-based nearby-pothole endpoint and a PostGIS distance query with validation, defaults, and result limits; documented the three geospatial contributions.
+- **Areas and deliverables:** [Geospatial plan](GEOSPATIAL_INCREMENT_PLAN.md), `backend/src/models/nearby-potholes.model.ts`, `backend/src/routes/nearby-potholes.routes.ts`, route registration, and `backend/test/nearby-potholes.test.ts`.
+- **Challenges and resolution:** No PostGIS instance was available for a live query check. Verified request behavior and longitude/latitude parameter order with automated tests; database integration remains pending.
+- **Remaining work or blocker:** Run a sample-data PostGIS test and review the upcoming camera/GPS flow with the frontend and detection work.
+- **Member confirmation:** Pending Vinh Do confirmation.
+
 <!-- VINH_LOG_END -->
 
 ### 2.5 Hoang Vu — Authentication, crowdsourcing, and administration
@@ -58,6 +107,14 @@ FSU ID: `vcd23a` · GitHub: `@vdc109`
 FSU ID: `hmv23` · GitHub: `@hoangvu5`
 
 <!-- HOANG_LOG_START -->
+#### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
+
+- **Contributions:** Pending member update.
+- **Areas and deliverables:** Pending member update.
+- **Challenges and resolution:** Pending member update.
+- **Remaining work or blocker:** Pending member update.
+- **Member confirmation:** Pending member update.
+
 <!-- HOANG_LOG_END -->
 
 ## 3. Plans for the next increment
