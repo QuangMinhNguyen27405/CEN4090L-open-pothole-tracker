@@ -18,3 +18,8 @@ detectionRouter.put(
   express.raw({ type: ["image/jpeg", "image/png"], limit: "5mb" }),
   DetectionController.uploadImage,
 );
+detectionRouter.post(
+  "/analyze",
+  express.raw({ type: ["image/jpeg", "image/png"], limit: "5mb" }),
+  DetectionController.analyze,
+);
