@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import zod from "zod";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "@/config/firebase";
+import { getGoogleAuth, googleProvider } from "@/config/firebase";
 import { logger } from "@/utils/logger";
 import {
   userService,
@@ -108,7 +108,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const fetchUser = async () => {
       try {
         setIsLoading(true);
-        const res = await axios.get("/api/auth/me", {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL || ""}/api/auth/me`, {
           withCredentials: true,
         });
 
@@ -161,7 +161,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const googleLoginMutation = useMutation({
     mutationFn: async () => {
-      const result = await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(getGoogleAuth(), googleProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
 
       if (!credential) {
