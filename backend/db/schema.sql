@@ -5,7 +5,12 @@ CREATE TABLE users (
   email text NOT NULL UNIQUE,
   username text NOT NULL,
   role text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-  created_at timestamptz NOT NULL DEFAULT now()
+  password_hash text,
+  firebase_uid text UNIQUE,
+  avatar_url text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE potholes (
