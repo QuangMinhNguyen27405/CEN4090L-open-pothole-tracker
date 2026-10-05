@@ -1,3 +1,5 @@
+import sharp from "sharp";
+
 export interface DetectionResult {
   predictions: Array<{
     class: string;
@@ -23,6 +25,11 @@ export class DetectionService {
       throw new TypeError("Image must be a non-empty buffer");
     }
 
-    return this.imageAnalyzer(imageBuffer);
+    const processedImage = await sharp(imageBuffer)
+      .resize(640, 480, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 75 })
+      .toBuffer();
+
+    return this.imageAnalyzer(processedImage);
   }
 }
