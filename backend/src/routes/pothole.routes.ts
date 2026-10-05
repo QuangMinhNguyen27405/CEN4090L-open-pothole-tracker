@@ -1,11 +1,25 @@
 import { Router } from "express";
-import { PotholeController } from "../controllers/pothole.controller.ts";
+import {
+  alongRouteBody,
+  boundsQuery,
+  confirmBody,
+  PotholeController,
+} from "../controllers/pothole.controller.ts";
+import { authenticate } from "../middleware/auth.middleware.ts";
 import { idParams, validate } from "../middleware/validate.middleware.ts";
 
 export const potholeRouter = Router();
 
-potholeRouter.get("/", PotholeController.list);
-potholeRouter.post("/along-route", PotholeController.alongRoute);
+potholeRouter.get(
+  "/",
+  validate({ query: boundsQuery }),
+  PotholeController.list,
+);
+potholeRouter.post(
+  "/along-route",
+  validate({ body: alongRouteBody }),
+  PotholeController.alongRoute,
+);
 potholeRouter.get(
   "/:id",
   validate({ params: idParams }),
@@ -13,6 +27,7 @@ potholeRouter.get(
 );
 potholeRouter.post(
   "/:id/confirmations",
-  validate({ params: idParams }),
+  authenticate,
+  validate({ params: idParams, body: confirmBody }),
   PotholeController.confirm,
 );
