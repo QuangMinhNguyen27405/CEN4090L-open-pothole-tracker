@@ -6,12 +6,10 @@ import {
   longitude,
   type IdParams,
 } from "../middleware/validate.middleware.ts";
+import { PotholeModel } from "../models/pothole.model.ts";
 
-export const boundsQuery = z.object({
-  west: z.coerce.number().pipe(longitude),
-  south: z.coerce.number().pipe(latitude),
-  east: z.coerce.number().pipe(longitude),
-  north: z.coerce.number().pipe(latitude),
+export const listQuery = z.object({
+  limit: z.coerce.number().int().positive().max(500).default(100),
 });
 
 export const alongRouteBody = z.object({
@@ -23,27 +21,21 @@ export const confirmBody = z.object({
   stillThere: z.boolean(),
 });
 
-type BoundsQuery = z.infer<typeof boundsQuery>;
+type ListQuery = z.infer<typeof listQuery>;
 type AlongRouteBody = z.infer<typeof alongRouteBody>;
 type ConfirmBody = z.infer<typeof confirmBody>;
 
 export const PotholeController = {
-  async list(req: Request<{}, unknown, unknown, BoundsQuery>, res: Response) {
-    const { west, south, east, north } = req.query;
-    const { rows } = await pool.query(
-      `SELECT ${POTHOLE_COLUMNS} FROM potholes
-       WHERE location && ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography
-       LIMIT 1000`,
-      [west, south, east, north],
-    );
-    res.json(rows);
+  async list(req: Request<{}, unknown, unknown, ListQuery>, res: Response) {
+    const potholes = await PotholeModel.findRecent(req.query.limit);
+    res.json({ data: potholes });
   },
 
   async getById(req: Request<IdParams>, res: Response) {
     const { rows } = await pool.query(
       `SELECT ${POTHOLE_COLUMNS},
          array(
-           SELECT '/uploads/' || image_path FROM detections
+           SELECT '/api/uploads/' || image_path FROM detections
            WHERE pothole_id = potholes.id AND image_path IS NOT NULL
            ORDER BY captured_at DESC
          ) AS image_urls

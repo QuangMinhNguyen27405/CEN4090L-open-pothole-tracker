@@ -1,8 +1,8 @@
 import { Router } from "express";
 import {
   alongRouteBody,
-  boundsQuery,
   confirmBody,
+  listQuery,
   PotholeController,
 } from "../controllers/pothole.controller.ts";
 import { authenticate } from "../middleware/auth.middleware.ts";
@@ -12,7 +12,7 @@ export const potholeRouter = Router();
 
 potholeRouter.get(
   "/",
-  validate({ query: boundsQuery }),
+  validate({ query: listQuery }),
   PotholeController.list,
 );
 potholeRouter.post(

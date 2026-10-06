@@ -7,7 +7,7 @@ export const app = express();
 
 app.use(express.json());
 app.use(
-  "/uploads",
+  "/api/uploads",
   express.static(UPLOAD_DIR, {
     setHeaders: (res) => res.set("X-Content-Type-Options", "nosniff"),
   }),
