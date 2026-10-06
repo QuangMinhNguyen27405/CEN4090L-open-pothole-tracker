@@ -168,8 +168,8 @@ Copy the relevant templates into the logs above. Use the PR templates for every 
 ### 6.5 Video or presentation — append to Section 5 at each closeout
 
 ```markdown
-### YYYY-MM-DD — Increment <number>
+### 2026-10-05 — Increment 1
 
-- **Link:** <URL or Pending>
-- **Shows:** <features, results, or presentation topics; or Pending>
+- **Link:** https://youtu.be/sFiokrBuTIE
+- **Shows:** Introduction and rough demonstration of project setup and team's workflows
 ```
