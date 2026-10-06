@@ -36,6 +36,27 @@ Append one team snapshot for each PR. State the **cumulative project status afte
 - [ ] Contributions, challenges, tests, links, and requirement IDs are accurate.
 - [ ] No pending updates or angle-bracket prompts remain in this PR's entries.
 
+### 2026-10-05 — PR #5: Add Increment 1 frontend foundation
+
+- **PR:** [#5 — Add Increment 1 frontend foundation](https://github.com/QuangMinhNguyen27405/CEN4090L-open-pothole-tracker/pull/5), merged · **Author:** Thien Le (`@ThienLe3101`) · **Commit:** [`7703114`](https://github.com/QuangMinhNguyen27405/CEN4090L-open-pothole-tracker/commit/7703114)
+- **Related issues and requirements:** No issue linked; issue tracking is deferred. [FR-02 and FR-03](RD_REPORT.md#2-functional-requirements), with frontend integration support for FR-01 and design work toward NFR-07–09.
+- **Purpose:** Provide the application's frontend foundation so visitors can navigate public pages and view a map and read-only pothole information.
+- **Team accomplishments in this PR:** Added the React/TypeScript/Vite setup, shared navigation and themes, public claim resources, Google Maps integration, location arrow, animated pothole markers, detail popups, thumbnails, and image viewer. Connected the existing account/profile pages to the application. Added API response validation, numeric ID normalization, request cancellation, load/error handling, and local API proxy configuration.
+- **Overall project status after this PR:** The project has a buildable frontend alongside the existing account/profile APIs, PostGIS schema, and image-analysis endpoint. The full detection-to-report-to-map workflow is not complete: the frontend's public pothole list endpoint is still absent. Camera capture, live updates, community actions, and administration remain future integration work.
+- **Shared challenges, setbacks, or scope changes:** No additional member-reported setback is recorded. Integration dependencies remain open: a Maps key/map ID and a compatible pothole API are needed for complete map testing. Increment 1 focuses on read-only map browsing; camera/driving controls and live notifications are deferred.
+- **Verification:** During implementation, the frontend production build and TypeScript check passed. Lint completed with zero errors and two existing login hook-dependency warnings. Thien subsequently reported successfully running the web app locally; this confirms startup only, not live marker/detail, device, or end-to-end API behavior. The original UI source and key assets were compared; exact rendered visual parity remains unverified.
+- **Immediate follow-up:** Verify the browser flow with real pothole data and matching map configuration; complete responsive/keyboard checks and public-link review; track unresolved work. Current handoff note after PR #6: `/api/potholes/nearby` exists but uses required coordinate parameters and returns a bare array, while the frontend requests `/api/potholes?limit=100` and expects `{ data: [...] }`.
+
+**Completion check**
+- [x] The team entry describes overall project status after this PR.
+- [ ] The author's entry and any other contributor entries are filled or confirmed by their members.
+- [x] Contributions, recorded checks, PR/commit links, and requirement IDs are supported by the implementation and available evidence; runtime limits are stated.
+- [ ] No pending member confirmations remain in this PR's entries.
+
+**2026-10-05 testing follow-up for PR #5:** Thien reported the basic frontend page/map checks working. After configuring the local terminal paths and starting the database/API, he reported `/api/health` returning `{ "status": "ok" }`. The supplied browser console then showed HTTP 401 for `/api/auth/me` while logged out and HTTP 404 for `/api/potholes?limit=100`. This establishes backend/database connectivity and frontend-to-API reachability; it does not establish real pothole display or full authentication behavior. The missing list route remains a known integration blocker. Individual device/browser versions, formal keyboard checks, real-data markers/details, external link checks, and exact visual comparisons remain unverified. Detailed evidence is in [IT_REPORT.md](IT_REPORT.md#3-execution-based-functional-testing).
+
+**2026-10-05 sync update after the browser check:** The latest pull through `85548cb` includes merged PR #1 with a bounds-based pothole list, detail/along-route reads, detection persistence and image upload, and authenticated confirmations. The previously recorded 404 predates those changes. The current frontend still sends only a limit and expects different response fields/envelope, so data integration remains open; the new contract has not been retested. The latest source/status details are reflected in RD and IT.
+
 <!-- TEAM_LOG_END -->
 
 ## 2. Member progress logs by PR
@@ -61,6 +82,18 @@ FSU ID: `mqn23` · GitHub: `@QuangMinhNguyen27405`
 FSU ID: `cl23m` · GitHub: `@ThienLe3101`
 
 <!-- THIEN_LOG_START -->
+#### 2026-10-05 — PR #5: Add Increment 1 frontend foundation
+
+- **PR and code evidence:** [PR #5](https://github.com/QuangMinhNguyen27405/CEN4090L-open-pothole-tracker/pull/5), commit [`7703114`](https://github.com/QuangMinhNguyen27405/CEN4090L-open-pothole-tracker/commit/7703114).
+- **Contributions:** Set up the frontend application and shared UI; implemented the public home/resources page, map page, animated markers, read-only details, and photo viewing. Integrated the existing authentication/profile pages without taking ownership of their original account functionality. Added the API client and development proxy, deferred Firebase initialization until Google sign-in, prevented recursive logout requests, and corrected the profile error-handler type.
+- **Areas and deliverables:** `frontend/src/App.tsx`, `frontend/src/components/pages/home/`, `frontend/src/components/pages/map/`, shared UI/theme files, `frontend/src/services/potholeService.ts`, build/configuration files, and `frontend/.env.example`. Related requirements: FR-02, FR-03, and frontend support for FR-01. This report update adds the frontend requirements/design and implementation/testing details to [RD_REPORT.md](RD_REPORT.md) and [IT_REPORT.md](IT_REPORT.md).
+- **Challenges and resolution:** Missing shared components and build configuration were supplied so the existing pages could run. The pothole API dependency remains unresolved. Additional personal challenges: Pending member update.
+- **Verification:** Build and TypeScript checks passed; lint passed with two existing warnings. I successfully ran the web app locally. Specific Google Maps, real-data, mobile, and keyboard results are not yet recorded.
+- **Remaining work or blocker:** Align the frontend and backend pothole contracts; test markers/details with real responses; verify responsive behavior, keyboard use, and public resource links. Plan live map updates and notifications with the backend owner for the next increment. Camera/GPS capture remains coordinated with Vinh Do. The team video and increment closeout contributions are still to be recorded.
+- **Member confirmation:** Thien confirmed local web-app startup; the full member entry is Pending Thien Le review.
+
+**2026-10-05 testing follow-up for PR #5:** I ran the web app and reported the basic page/map checks working. Local testing required making Node/npm and Docker available in the terminal and starting the database/backend; the health endpoint then returned `status: ok`. My browser console showed the expected logged-out 401 and a 404 for the missing pothole list route. The frontend can reach the API, but data-backed marker/detail testing is still blocked. I supplied the terminal/console results used in the testing report; the full written contribution entry remains pending my review.
+
 <!-- THIEN_LOG_END -->
 
 ### 2.4 Vinh Do — GPS, camera, and geospatial systems
