@@ -34,6 +34,7 @@ CREATE TABLE detections (
   confidence real NOT NULL CHECK (confidence BETWEEN 0 AND 1),
   model_version text NOT NULL,
   gps_accuracy real CHECK (gps_accuracy >= 0),
+  image_path text,
   captured_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
