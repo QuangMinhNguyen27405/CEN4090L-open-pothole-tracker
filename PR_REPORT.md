@@ -19,6 +19,7 @@ Use `YYYY-MM-DD` dates and the same PR number/title in the team and contributor 
 Append one team snapshot for each PR. State the **cumulative project status after the PR** as well as the progress made in it. Branch entries remain pending until a PR number is assigned and member updates are confirmed.
 
 <!-- TEAM_LOG_START -->
+
 ### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
 
 - **PR:** Pending; [review branch changes](https://github.com/QuangMinhNguyen27405/CEN4090L-open-pothole-tracker/compare/main...feat/nearby-potholes-increment-1) · **Author:** Vinh Do (`@vdc109`)
@@ -31,6 +32,7 @@ Append one team snapshot for each PR. State the **cumulative project status afte
 - **Immediate follow-up:** Confirm the query against PostGIS sample data; add the PR number when available; confirm the author's member entry before marking this PR ready to merge.
 
 **Completion check**
+
 - [x] The team entry describes overall project status after this PR.
 - [ ] The author's entry and any other contributor entries are filled or confirmed by their members.
 - [ ] Contributions, challenges, tests, links, and requirement IDs are accurate.
@@ -54,6 +56,25 @@ FSU ID: `ltn23` · GitHub: `@LinhNguyen2901`
 FSU ID: `mqn23` · GitHub: `@QuangMinhNguyen27405`
 
 <!-- QUANG_LOG_START -->
+
+#### 2026-10-05 — Direct commits to `main`: Backend and database setup
+
+- **Contributions:** Set up the backend with the PostGIS schema, a Docker Compose database, the Express app, validation and error middleware, and the API router.
+- **Areas and deliverables:** `backend/db/schema.sql`, `backend/docker-compose.yml`, `backend/src/app.ts`, `backend/src/middleware/`, and `backend/src/routes/`.
+- **Challenges and resolution:** These commits went straight to `main` before any PR existed. The `postgis/postgis` image does not run on Apple Silicon, so local testing used `imresamu/postgis`.
+
+#### 2026-10-05 — PR #1: Add Route and Controller Interface
+
+- **Contributions:** Added pothole endpoints for listing, details, route search, and confirmations, plus detection endpoints that merge reports within 10 m and accept a photo. Also added the `detections` table and a local upload folder.
+- **Areas and deliverables:** Pothole and detection controllers and routes, `backend/db/schema.sql`, and `backend/src/storage.ts`.
+- **Challenges and resolution:** Resolved a merge conflict with Linh's Roboflow `/analyze` endpoint by keeping all three detection endpoints. The PR merged before a follow-up commit, which left `/api/potholes/nearby` and the map's pothole request broken on `main`.
+
+#### 2026-10-05 — PR #7: Pothole API Update
+
+- **Contributions:** Restored `potholes.image_urls` to fix `/api/potholes/nearby`, and changed `GET /api/potholes` to return the `{ data }` format the frontend map expects. Uploaded photos now appear in the pothole's `images`.
+- **Areas and deliverables:** `backend/db/schema.sql`, `backend/src/models/pothole.model.ts`, the pothole controller and routes, the detection controller, and `backend/src/app.ts`.
+- **Challenges and resolution:** Cut a larger refactor down to the six files the fix needed. Typecheck, the nearby-lookup tests, and an end-to-end run on a fresh database passed.
+
 <!-- QUANG_LOG_END -->
 
 ### 2.3 Thien Le — Frontend, maps, and user experience
@@ -68,6 +89,7 @@ FSU ID: `cl23m` · GitHub: `@ThienLe3101`
 FSU ID: `vcd23a` · GitHub: `@vdc109`
 
 <!-- VINH_LOG_START -->
+
 #### 2026-10-05 — Branch `feat/nearby-potholes-increment-1`: Nearby pothole lookup
 
 - **Contributions:** Added a coordinate-based nearby-pothole endpoint and a PostGIS distance query with validation, defaults, and result limits; documented the three geospatial contributions.
@@ -125,6 +147,7 @@ Copy the relevant templates into the logs above. Use the PR templates for every 
 - **Immediate follow-up:** <concrete tasks before or in the next PR>
 
 **Completion check**
+
 - [ ] The team entry describes overall project status after this PR.
 - [ ] The author's entry and any other contributor entries are filled or confirmed by their members.
 - [ ] Contributions, challenges, tests, links, and requirement IDs are accurate.
