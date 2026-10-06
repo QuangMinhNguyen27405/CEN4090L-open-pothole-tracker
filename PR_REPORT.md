@@ -47,6 +47,13 @@ Each member appends an entry under their own heading for PRs they contribute to.
 FSU ID: `ltn23` · GitHub: `@LinhNguyen2901`
 
 <!-- LINH_LOG_START -->
+#### Backend and collaborative documentation contributions
+
+- **Contributions:** Implemented the `PotholeModel` and contributed the detection-service interface, image preprocessing, Roboflow inference adapter, and HTTP image-analysis endpoint ([Detection services PR #3](https://github.com/QuangMinhNguyen27405/CEN4090L-open-pothole-tracker/pull/3)). Collaborated with teammates on Part 1 and Part 6 of the RD report and across the IT report, with most of my work focused on testing Parts 3–5.
+- **Areas and deliverables:** `backend/src/models/pothole.model.ts`, backend detection service and route files, [RD_REPORT.md](RD_REPORT.md), and [IT_REPORT.md](IT_REPORT.md).
+- **Challenges and resolution:** Live Roboflow inference still needs valid model credentials and may consume credits, so the endpoint was smoke-tested with a mocked response. The RD and IT reports are still works in progress; most planned tests cannot be completed yet because several required features are not implemented or integrated.
+- **Remaining work or blocker:** Complete the reports collaboratively as the project develops; implement remaining features, then run the planned functional, performance, accessibility, and security tests. Test inference against a real trained model when credentials are available.
+
 <!-- LINH_LOG_END -->
 
 ### 2.2 Quang Minh Nguyen — AI detection and computer vision

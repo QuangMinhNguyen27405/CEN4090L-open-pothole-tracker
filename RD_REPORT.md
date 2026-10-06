@@ -2,11 +2,7 @@
 
 **Project:** Open Pothole Tracker
 
-**Repository inspected:** 2026-10-05
-
 **Project team:** Linh Nguyen, Thien Le, Vinh Do, Hoang Vu, Quang Minh Nguyen
-
-> Requirements and acceptance criteria below are a **draft specification**. “Implemented” means visible in this repository; it does not mean runtime verified.
 
 ## 1. Overview and scope
 
@@ -174,7 +170,12 @@ sequenceDiagram
 
 ## 6. Operating environment
 
-The current backend is an Express 5/TypeScript API with a declared **Node.js >=24** requirement (`backend/package.json`). It expects `PORT`, `DATABASE_URL`, and `JWT_SECRET` from the environment; Google login also requires a Firebase service account. `backend/docker-compose.yml` defines PostgreSQL 17 with PostGIS 3.5 and mounts `backend/db/schema.sql` for initialization. The intended client is a browser on desktop/mobile hardware with a camera and location capability for detection. The repository contains React/TSX pages and Vite-style environment references, but **no `frontend/package.json`, application entry point, router, or build configuration**, so a supported frontend runtime cannot yet be stated from this checkout.
+- **Hardware platform:** The backend is intended to run on a general-purpose server or development machine; no minimum CPU, memory, or storage requirements have been established. Users will access the system from desktop or mobile devices. Detection requires a camera and location capability.
+- **Operating systems:** The deployment operating system and supported client operating-system versions have not yet been selected. The database setup uses Docker Compose, so its host must support Docker.
+- **Backend software:** The API uses Node.js 24 or later with Express 5 and TypeScript. It reads `PORT`, `DATABASE_URL`, and `JWT_SECRET` from environment variables.
+- **Database software:** Docker Compose runs PostgreSQL 17 with PostGIS 3.5. On a fresh database, it loads the schema from `backend/db/schema.sql`.
+- **Client software:** The intended client is a modern desktop or mobile web browser. Specific supported browsers and versions still need to be decided. The frontend has React/TSX pages and Vite-style environment references, but this checkout does not include a frontend package manifest, application entry point, router, or build configuration, so the frontend build/runtime setup remains to be established.
+- **Other components:** Google login depends on Firebase Authentication and Firebase Admin, including valid project/service-account configuration. The backend also requires access to the PostgreSQL database. These components must be available and correctly configured for the corresponding features to work.
 
 ## 7. Assumptions and dependencies
 
@@ -184,13 +185,3 @@ The current backend is an Express 5/TypeScript API with a declared **Node.js >=2
 - The database architecture in this repository uses PostgreSQL/PostGIS. Future design and deployment instructions should use the actual schema unless the team decides to migrate.
 - A fresh database must load the SQL schema; the mounted init script will not automatically migrate an existing database volume.
 - The team must decide how to handle inaccurate GPS readings, duplicate detections, stale reports, image retention, and moderation history.
-
-## Repository status summary
-
-| Area | Observed state |
-| --- | --- |
-| Accounts | Auth/profile routes, models, and selected UI pages exist. |
-| Spatial data | PostGIS schema and `PotholeModel.create` exist. |
-| Community input | Confirmation model exists; no confirmation route/UI. |
-| Detection/map/admin | Empty pothole and detection routers; no detection, map, or review UI in this checkout. |
-| Delivery | Backend manifest/Compose files exist; frontend build setup and automated tests are absent. |
