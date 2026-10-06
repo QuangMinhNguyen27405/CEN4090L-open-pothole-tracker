@@ -2,6 +2,8 @@
 
 **Project:** Open Pothole Tracker
 
+**2026-10-05 integration update after PR #7:** The merged backend now accepts `GET /api/potholes?limit=100` and returns `{ data: [...] }` with the frontend field names and image array. Image URLs use `/api/uploads/`. This supersedes the bounds-based contract mismatch described in the earlier inspection below. Real-data browser testing has not been rerun, so successful integration is not yet verified.
+
 **Repository inspected:** 2026-10-05, including the latest pull through `85548cb`. Recorded browser results predate the newly merged pothole API.
 
 **Project team:** Linh Nguyen, Thien Le, Vinh Do, Hoang Vu, Quang Minh Nguyen
@@ -81,21 +83,23 @@ Run the backend and database separately. The backend reads `backend/.env`, not a
 
 The previously observed connection-refused and Vite proxy 500 errors occurred while the backend/database were not listening locally. After local PATH configuration, startup, and frontend proxy configuration, requests reached the API and returned the 401/404 results above. `backend/test/nearby-potholes.test.ts` now exists. Backend dependency installation succeeded but reported two moderate audit findings and package/script warnings; their impact has not been assessed in this test.
 
-The following test matrix follows the functional requirements and lead/supporting modules in `RD_REPORT.md`. “Code present” is an inspection result, not a passed test.
+We will test each functional requirement as its corresponding feature becomes available.
 
-| RD ID | Test scenario and expected result | Present evidence / result |
+For API and database scenarios, we plan to run the backend with a test PostGIS database, send requests with valid and invalid inputs, and verify both response status/body and resulting database state. For browser flows, we plan to use test accounts and mock browser permissions such as camera and location. We will record the test date, setup, steps, expected result, actual result, and any defects.
+
+| RD ID | Planned test procedure and expected result | Current status |
 | --- | --- | --- |
-| FR-01 | Create an account, sign in/out, and update a profile. | Logged-out session check returned 401; account actions are **not verified**. |
-| FR-02 | Open the map, explore an area, and view a pothole's details. | Map display reported working; real-data markers/details are **blocked by the frontend/backend contract mismatch**. |
-| FR-03 | Open public claim resources. | Public page reported working; individual external destinations are **not verified**. |
-| FR-04 | Capture camera input with location permission. | Map-only location code exists; camera/frame submission is **not implemented**. |
-| FR-05 | Submit camera data and receive a detection result. | Image-analysis route and adapter exist; **live model response not verified in this report**. |
-| FR-06 | Create and retrieve a geolocated report with detection details. | Detection-write/image-upload and list/detail/nearby routes now exist; the full browser flow is **not verified end-to-end**. |
-| FR-07 | Find nearby reports and handle a repeated detection. | Mocked nearby tests recorded by the team; a 10-meter detection matching implementation now exists. Live spatial and duplicate behavior remain **unverified**. |
-| FR-08 | Receive a detection notice and see a new map marker. | Read-only map exists; real-time transport/notifications are absent, so **not testable yet**. |
-| FR-09 | Confirm a report and view community feedback. | Confirmation model and authenticated upsert route exist; community UI is absent and the flow is **not verified end-to-end**. |
-| FR-10 | Admin reviews, verifies/rejects, and manages a report. | Review workflow absent; **not testable yet**. |
-| FR-11 | Unauthorized and non-admin users are denied protected actions. | Logged-out session lookup returned 401; ownership/admin/write restrictions are **not verified**. |
+| FR-01 | Register a test account, log in with correct and incorrect credentials, log out, and update its profile; verify success and validation/error responses. | Logged-out session check returned 401; account actions are **not verified**. |
+| FR-02 | Open the map, pan/zoom to a test area, select a report marker, and verify its details match the API response. | Map display reported working; real-data markers/details are **blocked by the frontend/backend contract mismatch**. |
+| FR-03 | Open each public claim resource and verify its destination and content. | Public page reported working; individual external destinations are **not verified**. |
+| FR-04 | Grant camera and location permissions, capture an image, and verify the image and coordinates are available for submission. Repeat with permissions denied and verify a clear error. | Map-only location code exists; camera/frame submission is **not implemented**. |
+| FR-05 | Submit a supported image to the detection endpoint and verify the returned prediction format; also test invalid media, oversized input, and detector failure. | Image-analysis route and adapter exist; **live model response not verified in this report**. |
+| FR-06 | Submit a report with valid coordinates and detection details, then retrieve it and compare the response to the saved database row. Repeat with invalid coordinates. | Detection-write/image-upload and list/detail/nearby routes now exist; the full browser flow is **not verified end-to-end**. |
+| FR-07 | Create reports at nearby and distant coordinates, query the area, and verify nearby duplicates are matched while distant reports remain separate. | Mocked nearby tests recorded by the team; a 10-meter detection matching implementation now exists. Live spatial and duplicate behavior remain **unverified**. |
+| FR-08 | Submit a report while the map is open and verify the expected notification and marker update appear. | Read-only map exists; real-time transport/notifications are absent, so **not testable yet**. |
+| FR-09 | Confirm a report as a user, submit a repeat confirmation, and verify the saved confirmation and community feedback. | Confirmation model and authenticated upsert route exist; community UI is absent and the flow is **not verified end-to-end**. |
+| FR-10 | Sign in as an admin, review a report, approve/reject it, and verify the saved status; repeat as a non-admin and expect denial. | Review workflow absent; **not testable yet**. |
+| FR-11 | Call protected operations without a token, with an invalid token, and with a valid token for a user lacking permission; verify unauthorized requests are rejected. | Logged-out session lookup returned 401; ownership/admin/write restrictions are **not verified**. |
 
 For implementation, seed a temporary PostGIS database, run API integration tests against each route, then add browser tests with camera/location mocks and a controlled detection-service stub. Record dates, environment, inputs, expected/actual results, and defects for each run.
 
@@ -103,18 +107,25 @@ For implementation, seed a temporary PostGIS database, run API integration tests
 
 The basic connectivity and logged-out session checks above do not establish performance, privacy, security, accessibility, or full device compatibility. No measured latency/load or formal accessibility/device results are recorded. The following runs should verify `RD_REPORT.md` NFRs when the corresponding features exist:
 
-| RD ID | Execution method | Evidence to record |
+| RD ID | Planned test method | Evidence to record |
 | --- | --- | --- |
-| NFR-01 | Exercise protected routes without a token, with a different user's token, and with non-admin role; inspect production cookie flags and HTTPS. | Response codes, cookie headers, deployment configuration. |
-| NFR-02 | Deny camera/location permission and inspect network requests and stored media. | Browser behavior and data-retention trace. |
-| NFR-03 | Send boundary and out-of-range coordinates/confidence plus repeated confirmations. | API responses and database state. |
-| NFR-04–05 | Load a representative report dataset; time map-area API responses and report-to-map updates. | Dataset size, hardware, network, p95 latency, update delay. |
-| NFR-06 | Make the detector unavailable during submission. | User-visible error, API health, absence of a false report. |
-| NFR-07–08 | Keyboard/screen-reader walkthrough and mobile browser/device matrix. | Browser/device versions, task outcomes, accessibility defects. |
+| NFR-01 | Send requests without credentials, with another user's credentials, and as a non-admin; verify access is denied. Check cookie flags and HTTPS configuration in the deployment environment. | Status codes, cookie settings, and deployment configuration. |
+| NFR-02 | Deny camera/location permissions and inspect browser behavior, network requests, and whether any media or coordinates are retained. | Browser results and observed data handling. |
+| NFR-03 | Submit values at, just inside, and outside coordinate/confidence limits; repeat confirmations and check API responses and database rows. | Inputs, responses, and database state. |
+| NFR-04–05 | Use a representative dataset and a load-testing tool to increase API traffic; measure map-area response time and report-to-map update delay. | Dataset size, load profile, hardware, network, response-time percentiles, errors, and update delay. |
+| NFR-06 | Make the detection provider unavailable during submission and verify that the client receives a clear failure and no false report is saved. | Error response, user-visible behavior, and database state. |
+| NFR-07–08 | Complete key tasks using keyboard-only navigation and a screen reader, then repeat them on supported mobile browsers/devices. | Browser/device versions, task outcomes, and accessibility issues. |
 
-These are **planned tests**, not completed measurements. The proposed targets in `RD_REPORT.md` need team agreement before pass/fail decisions.
+## 5. Non-execution-based testing
 
-## 5. Non-execution-based testing and inspection
+We have used pull requests to support peer review and have had informal walkthroughs of changes with teammates. These reviews help us discuss implementation choices and catch issues before merging, but they have not yet followed a formal checklist or been documented consistently.
+
+| Review activity | Current practice or next step | What we will check |
+| --- | --- | --- |
+| Pull-request peer review | Used for current changes; continue requesting teammate review before merging. | Correctness, validation, authorization, error handling, secrets, and consistency with existing patterns. |
+| Informal walkthroughs | Used to discuss some changes; continue these as features are developed. | Implementation intent, API and data-flow understanding, and issues noticed by the team. |
+| Structured requirements/design review | Plan a fuller walkthrough as the project and requirements mature. Trace RD requirements through design, API/UI behavior, and test plans. | Missing or unclear requirements, edge cases, data ownership, failure paths, and untestable requirements. |
+| UI walkthrough | Plan a focused review of key user flows before release. | Navigation, labels, feedback, keyboard access, and consistency with requirements. |
 
 This report includes a source walkthrough of the route registrations, controllers, models, schema, Compose file, package metadata, and frontend imports. It is not evidence of a formal peer review. The inspection found:
 

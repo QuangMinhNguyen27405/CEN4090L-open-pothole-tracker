@@ -98,16 +98,23 @@ export const DetectionController = {
       return;
     }
     const file = `detection-${id}.${ext}`;
+    const imageUrl = `/api/uploads/${file}`;
     const { rowCount } = await pool.query(
-      "UPDATE detections SET image_path = $2 WHERE id = $1",
-      [id, file],
+      `WITH detection AS (
+         UPDATE detections SET image_path = $2 WHERE id = $1
+         RETURNING pothole_id
+       )
+       UPDATE potholes
+       SET image_urls = array_append(array_remove(image_urls, $3), $3)
+       FROM detection WHERE potholes.id = detection.pothole_id`,
+      [id, file, imageUrl],
     );
     if (!rowCount) {
       res.status(404).json({ error: "Detection not found" });
       return;
     }
     await writeFile(path.join(UPLOAD_DIR, file), req.body);
-    res.json({ image_url: `/uploads/${file}` });
+    res.json({ image_url: imageUrl });
   },
 
   async analyze(req: Request, res: Response) {

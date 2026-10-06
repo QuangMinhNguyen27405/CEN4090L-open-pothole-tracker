@@ -2,11 +2,11 @@
 
 **Project:** Open Pothole Tracker
 
+**2026-10-05 integration update after PR #7:** The merged backend now accepts `GET /api/potholes?limit=100` and returns `{ data: [...] }` with the frontend field names and image array. Image URLs use `/api/uploads/`. This supersedes the bounds-based contract mismatch described in the earlier inspection below. Real-data browser testing has not been rerun, so successful integration is not yet verified.
+
 **Repository inspected:** 2026-10-05, including the latest pull through `85548cb`. Browser test evidence below predates the newly merged pothole API.
 
 **Project team:** Linh Nguyen, Thien Le, Vinh Do, Hoang Vu, Quang Minh Nguyen
-
-> Requirements and acceptance criteria below are a **draft specification**. “Implemented” means visible in this repository; it does not mean runtime verified.
 
 ## 1. Overview and scope
 
@@ -175,7 +175,12 @@ sequenceDiagram
 
 ## 6. Operating environment
 
-The current backend is an Express 5/TypeScript API with a declared **Node.js >=24** requirement (`backend/package.json`). It expects `PORT`, `DATABASE_URL`, and `JWT_SECRET` from the environment; Google login also requires a Firebase service account. `backend/docker-compose.yml` defines PostgreSQL 17 with PostGIS 3.5 and mounts `backend/db/schema.sql` for initialization. The intended client is a browser on desktop/mobile hardware with a camera and location capability for detection. The client now has a React 19/TypeScript application, Vite 7 build/development setup, Tailwind CSS 4 styles, and routes for `/`, `/map`, `/login`, `/signup`, and `/profile`. Google Maps is integrated through `@vis.gl/react-google-maps` and needs `VITE_GOOGLE_MAPS_API_KEY` and `VITE_GOOGLE_MAPS_ID`. The frontend build was verified using Node 24.12.0. With `VITE_API_URL` blank, the Vite development proxy forwards `/api` requests to `http://localhost:8000`; deployment requires equivalent API routing or an appropriately configured API origin.
+- **Hardware platform:** The backend is intended to run on a general-purpose server or development machine; no minimum CPU, memory, or storage requirements have been established. Users will access the system from desktop or mobile devices. Detection requires a camera and location capability.
+- **Operating systems:** The deployment operating system and supported client operating-system versions have not yet been selected. The database setup uses Docker Compose, so its host must support Docker.
+- **Backend software:** The API uses Node.js 24 or later with Express 5 and TypeScript. It reads `PORT`, `DATABASE_URL`, and `JWT_SECRET` from environment variables.
+- **Database software:** Docker Compose runs PostgreSQL 17 with PostGIS 3.5. On a fresh database, it loads the schema from `backend/db/schema.sql`.
+- **Client software:** The intended client is a modern desktop or mobile web browser. Specific supported browsers and versions still need to be decided. The React 19/TypeScript frontend includes Vite 7, Tailwind CSS 4, its package manifest, entry point, router, and build configuration. Google Maps requires `VITE_GOOGLE_MAPS_API_KEY` and `VITE_GOOGLE_MAPS_ID`. The frontend build was verified using Node 24.12.0. With `VITE_API_URL` blank, the development proxy forwards `/api` to `http://localhost:8000`; deployment requires equivalent routing or a configured API origin.
+- **Other components:** Google login depends on Firebase Authentication and Firebase Admin, including valid project/service-account configuration. The backend also requires access to the PostgreSQL database. These components must be available and correctly configured for the corresponding features to work.
 
 ## 7. Assumptions and dependencies
 
