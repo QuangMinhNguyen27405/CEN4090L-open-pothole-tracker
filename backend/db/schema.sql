@@ -20,12 +20,25 @@ CREATE TABLE potholes (
   detection_count integer NOT NULL DEFAULT 1 CHECK (detection_count > 0),
   verified boolean NOT NULL DEFAULT false,
   reported_by integer REFERENCES users (id) ON DELETE SET NULL,
-  image_urls text[] NOT NULL DEFAULT '{}',
   created_at timestamptz NOT NULL DEFAULT now(),
   last_detected_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX potholes_location_idx ON potholes USING gist (location);
+
+CREATE TABLE detections (
+  id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  pothole_id integer NOT NULL REFERENCES potholes (id) ON DELETE CASCADE,
+  location geography(Point, 4326) NOT NULL,
+  confidence real NOT NULL CHECK (confidence BETWEEN 0 AND 1),
+  model_version text NOT NULL,
+  gps_accuracy real CHECK (gps_accuracy >= 0),
+  image_path text,
+  captured_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX detections_pothole_id_idx ON detections (pothole_id);
 
 CREATE TABLE confirmations (
   pothole_id integer NOT NULL REFERENCES potholes (id) ON DELETE CASCADE,
