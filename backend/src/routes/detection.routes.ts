@@ -3,12 +3,14 @@ import {
   createDetectionBody,
   DetectionController,
 } from "../controllers/detection.controller.ts";
+import { attachUserFromToken } from "../middleware/auth.middleware.ts";
 import { idParams, validate } from "../middleware/validate.middleware.ts";
 
 export const detectionRouter = Router();
 
 detectionRouter.post(
   "/",
+  attachUserFromToken,
   validate({ body: createDetectionBody }),
   DetectionController.create,
 );

@@ -52,4 +52,14 @@ export const PotholeModel = {
     );
     return rows[0]!;
   },
+
+  findRecent: async (limit: number): Promise<Pothole[]> => {
+    const { rows } = await pool.query<Pothole>(
+      `SELECT ${POTHOLE_COLUMNS} FROM potholes
+       ORDER BY last_detected_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+    return rows;
+  },
 };

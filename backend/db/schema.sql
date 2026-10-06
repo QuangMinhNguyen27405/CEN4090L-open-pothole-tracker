@@ -20,6 +20,7 @@ CREATE TABLE potholes (
   detection_count integer NOT NULL DEFAULT 1 CHECK (detection_count > 0),
   verified boolean NOT NULL DEFAULT false,
   reported_by integer REFERENCES users (id) ON DELETE SET NULL,
+  image_urls text[] NOT NULL DEFAULT '{}',
   created_at timestamptz NOT NULL DEFAULT now(),
   last_detected_at timestamptz NOT NULL DEFAULT now()
 );
@@ -33,7 +34,6 @@ CREATE TABLE detections (
   confidence real NOT NULL CHECK (confidence BETWEEN 0 AND 1),
   model_version text NOT NULL,
   gps_accuracy real CHECK (gps_accuracy >= 0),
-  image_path text,
   captured_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );

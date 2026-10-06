@@ -2,22 +2,20 @@ import type { Request, Response } from "express";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { pool, POTHOLE_COLUMNS } from "../db.ts";
 import {
   latitude,
   longitude,
   type IdParams,
 } from "../middleware/validate.middleware.ts";
+import { DetectionModel } from "../models/detection.model.ts";
 import { DetectionService } from "../services/detection.service.ts";
 import { createRoboflowImageAnalyzer } from "../services/roboflow-image-analyzer.ts";
 import { UPLOAD_DIR } from "../storage.ts";
 
-const MERGE_RADIUS_METERS = 10;
-
 export const createDetectionBody = z.object({
-  lat: latitude,
-  lng: longitude,
-  confidence: z.number().min(0).max(1),
+  latitude,
+  longitude,
+  confidenceScore: z.number().min(0).max(1),
   modelVersion: z.string().min(1).max(100),
   capturedAt: z.iso.datetime({ offset: true }),
   gpsAccuracy: z.number().nonnegative().optional(),
@@ -36,52 +34,11 @@ function imageExtension(data: Buffer) {
 
 export const DetectionController = {
   async create(req: Request<{}, unknown, CreateDetectionBody>, res: Response) {
-    const d = req.body;
-    const { rows } = await pool.query(
-      `WITH point AS (
-         SELECT ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography AS geog
-       ),
-       nearby AS (
-         SELECT p.id AS nearby_id FROM potholes p, point
-         WHERE ST_DWithin(p.location, point.geog, $4)
-         ORDER BY p.location <-> point.geog
-         LIMIT 1
-       ),
-       updated AS (
-         UPDATE potholes SET detection_count = detection_count + 1,
-           last_detected_at = now(),
-           confidence = greatest(confidence, $3)
-         FROM nearby WHERE id = nearby_id
-         RETURNING ${POTHOLE_COLUMNS}
-       ),
-       inserted AS (
-         INSERT INTO potholes (location, confidence)
-         SELECT geog, $3 FROM point
-         WHERE NOT EXISTS (SELECT 1 FROM nearby)
-         RETURNING ${POTHOLE_COLUMNS}
-       ),
-       pothole AS (
-         SELECT * FROM updated UNION ALL SELECT * FROM inserted
-       ),
-       detection AS (
-         INSERT INTO detections
-           (pothole_id, location, confidence, model_version, gps_accuracy, captured_at)
-         SELECT pothole.id, point.geog, $3, $5, $6, $7 FROM pothole, point
-         RETURNING id
-       )
-       SELECT detection.id AS detection_id, pothole.* FROM detection, pothole`,
-      [
-        d.lng,
-        d.lat,
-        d.confidence,
-        MERGE_RADIUS_METERS,
-        d.modelVersion,
-        d.gpsAccuracy ?? null,
-        d.capturedAt,
-      ],
-    );
-    const { detection_id, ...pothole } = rows[0];
-    res.status(201).json({ id: detection_id, pothole });
+    const detection = await DetectionModel.create({
+      ...req.body,
+      userId: req.user?.id,
+    });
+    res.status(201).json({ data: detection });
   },
 
   async uploadImage(req: Request<IdParams>, res: Response) {
@@ -98,16 +55,13 @@ export const DetectionController = {
       return;
     }
     const file = `detection-${id}.${ext}`;
-    const { rowCount } = await pool.query(
-      "UPDATE detections SET image_path = $2 WHERE id = $1",
-      [id, file],
-    );
-    if (!rowCount) {
+    const imageUrl = `/api/uploads/${file}`;
+    if (!(await DetectionModel.addImage(id, imageUrl))) {
       res.status(404).json({ error: "Detection not found" });
       return;
     }
     await writeFile(path.join(UPLOAD_DIR, file), req.body);
-    res.json({ image_url: `/uploads/${file}` });
+    res.json({ data: { imageUrl } });
   },
 
   async analyze(req: Request, res: Response) {
