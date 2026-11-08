@@ -23,6 +23,7 @@ export default function MapPage() {
   const [reload, setReload] = useState(0);
   const [capturedFrame, setCapturedFrame] = useState<CapturedFrame | null>(null);
   const [capturedImageUrl, setCapturedImageUrl] = useState("");
+  const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "detected" | "not-detected" | "error">("idle");
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
@@ -64,6 +65,18 @@ export default function MapPage() {
       controller.abort();
     };
   }, [reload]);
+
+  const submitCapture = async () => {
+    if (!capturedFrame) return;
+    setReportStatus("loading");
+    try {
+      const result = await potholeService.reportDetection(capturedFrame);
+      setReportStatus(result.detected ? "detected" : "not-detected");
+      if (result.detected) setReload((value) => value + 1);
+    } catch {
+      setReportStatus("error");
+    }
+  };
 
   if (!apiKey) {
     return (
@@ -109,7 +122,12 @@ export default function MapPage() {
           </div>
         )}
         <div className="fixed bottom-6 right-24 z-20">
-          <CameraCapture onCapture={setCapturedFrame} />
+          <CameraCapture
+            onCapture={(frame) => {
+              setCapturedFrame(frame);
+              setReportStatus("idle");
+            }}
+          />
         </div>
         {capturedFrame && capturedImageUrl && (
           <div className="fixed bottom-6 left-6 z-20 flex max-w-sm items-center gap-3 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-xl">
@@ -126,11 +144,26 @@ export default function MapPage() {
               <p className="text-muted-foreground">
                 {new Date(capturedFrame.capturedAt).toLocaleString()}
               </p>
+              {reportStatus === "detected" && <p role="status">Pothole report saved.</p>}
+              {reportStatus === "not-detected" && <p role="status">No pothole detected.</p>}
+              {reportStatus === "error" && (
+                <p role="alert" className="text-destructive">Could not submit capture. Please try again.</p>
+              )}
             </div>
+            <Button
+              size="sm"
+              onClick={() => void submitCapture()}
+              disabled={reportStatus === "loading" || reportStatus === "detected" || reportStatus === "not-detected"}
+            >
+              {reportStatus === "loading" ? "Analyzing..." : "Analyze"}
+            </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setCapturedFrame(null)}
+              onClick={() => {
+                setCapturedFrame(null);
+                setReportStatus("idle");
+              }}
               aria-label="Discard capture"
             >
               Discard

@@ -22,6 +22,8 @@ const ConfirmationSummarySchema = z.object({
 
 export type ConfirmationSummary = z.infer<typeof ConfirmationSummarySchema>;
 
+const DetectionReportSchema = z.object({ detected: z.boolean() });
+
 export const potholeService = {
   async getPotholes(signal?: AbortSignal): Promise<Pothole[]> {
     const response = await axios.get(
@@ -42,5 +44,30 @@ export const potholeService = {
       { withCredentials: true, timeout: 15000 },
     );
     return ConfirmationSummarySchema.parse(response.data);
+  },
+
+  async reportDetection(frame: {
+    image: Blob;
+    lat: number;
+    lng: number;
+    capturedAt: string;
+    gpsAccuracy: number;
+  }): Promise<{ detected: boolean }> {
+    const params = new URLSearchParams({
+      lat: String(frame.lat),
+      lng: String(frame.lng),
+      capturedAt: frame.capturedAt,
+      gpsAccuracy: String(frame.gpsAccuracy),
+    });
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_URL || ""}/api/detections/report?${params}`,
+      frame.image,
+      {
+        headers: { "Content-Type": frame.image.type },
+        withCredentials: true,
+        timeout: 30000,
+      },
+    );
+    return DetectionReportSchema.parse(response.data);
   },
 };
