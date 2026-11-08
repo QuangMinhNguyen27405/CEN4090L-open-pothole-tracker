@@ -1,20 +1,43 @@
 import { AdvancedMarker } from "@vis.gl/react-google-maps";
 import React, { useState } from "react";
-import { type Pothole } from "@/services/potholeService";
+import {
+  potholeService,
+  type ConfirmationSummary,
+  type Pothole,
+} from "@/services/potholeService";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import ImageViewer from "@/components/ui/imageViewer";
+import { useAuth } from "@/context/auth";
+import { Link } from "react-router-dom";
 
 interface PotholeMarkerProps {
   pothole: Pothole;
-
 }
 
 const PotholeMarker = ({ pothole }: PotholeMarkerProps) => {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isClicked, setIsClicked] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [confirmationSummary, setConfirmationSummary] = useState<ConfirmationSummary | null>(null);
+  const [isSubmittingConfirmation, setIsSubmittingConfirmation] = useState(false);
+  const [confirmationError, setConfirmationError] = useState("");
+
+  const submitConfirmation = async (stillThere: boolean) => {
+    setIsSubmittingConfirmation(true);
+    setConfirmationError("");
+    try {
+      setConfirmationSummary(await potholeService.confirm(pothole._id, stillThere));
+    } catch {
+      setConfirmationError("Couldn't save your confirmation. Please try again.");
+    } finally {
+      setIsSubmittingConfirmation(false);
+    }
+  };
+
   const handleMarkerClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
     setIsClicked(true);
@@ -163,6 +186,53 @@ const PotholeMarker = ({ pothole }: PotholeMarkerProps) => {
                 <div>Lat: {pothole.latitude.toFixed(6)}</div>
                 <div>Lng: {pothole.longitude.toFixed(6)}</div>
               </div>
+            </div>
+
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-xs font-medium">Is this pothole still there?</p>
+              {user ? (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isSubmittingConfirmation}
+                    onClick={() => void submitConfirmation(true)}
+                  >
+                    Still there
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isSubmittingConfirmation}
+                    onClick={() => void submitConfirmation(false)}
+                  >
+                    Fixed / gone
+                  </Button>
+                </div>
+              ) : !isAuthLoading ? (
+                <p className="text-xs text-muted-foreground">
+                  <Link to="/login" className="text-primary underline">
+                    Sign in
+                  </Link>{" "}
+                  to confirm this report.
+                </p>
+              ) : null}
+              {isSubmittingConfirmation && (
+                <p role="status" className="text-xs text-muted-foreground">
+                  Saving your confirmation...
+                </p>
+              )}
+              {confirmationError && (
+                <p role="alert" className="text-xs text-destructive">
+                  {confirmationError}
+                </p>
+              )}
+              {confirmationSummary && (
+                <p aria-live="polite" className="text-xs text-muted-foreground">
+                  {confirmationSummary.still_there} say still there ·{" "}
+                  {confirmationSummary.not_there} say fixed or gone
+                </p>
+              )}
             </div>
 
             {/* Images section */}
