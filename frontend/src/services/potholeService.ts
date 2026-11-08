@@ -15,6 +15,13 @@ const PotholeSchema = z.object({
 
 export type Pothole = z.infer<typeof PotholeSchema>;
 
+const ConfirmationSummarySchema = z.object({
+  still_there: z.number().int().nonnegative(),
+  not_there: z.number().int().nonnegative(),
+});
+
+export type ConfirmationSummary = z.infer<typeof ConfirmationSummarySchema>;
+
 export const potholeService = {
   async getPotholes(signal?: AbortSignal): Promise<Pothole[]> {
     const response = await axios.get(
@@ -23,5 +30,17 @@ export const potholeService = {
     );
     // Invalid payloads must be errors, rather than appearing as an empty map.
     return z.object({ data: z.array(PotholeSchema) }).parse(response.data).data;
+  },
+
+  async confirm(
+    potholeId: string,
+    stillThere: boolean,
+  ): Promise<ConfirmationSummary> {
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_URL || ""}/api/potholes/${encodeURIComponent(potholeId)}/confirmations`,
+      { stillThere },
+      { withCredentials: true, timeout: 15000 },
+    );
+    return ConfirmationSummarySchema.parse(response.data);
   },
 };
