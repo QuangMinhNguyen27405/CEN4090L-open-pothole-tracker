@@ -7,6 +7,7 @@ import CompassMarker from "./compassMarker";
 import { useCompass } from "./authHook";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import CameraCapture, { type CapturedFrame } from "./cameraCapture";
 import { Compass } from "lucide-react";
 
 // Keep the original map's fallback location and presentation.
@@ -20,7 +21,20 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
+  const [capturedFrame, setCapturedFrame] = useState<CapturedFrame | null>(null);
+  const [capturedImageUrl, setCapturedImageUrl] = useState("");
+  const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "detected" | "not-detected" | "error">("idle");
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+  useEffect(() => {
+    if (!capturedFrame) {
+      setCapturedImageUrl("");
+      return;
+    }
+    const imageUrl = URL.createObjectURL(capturedFrame.image);
+    setCapturedImageUrl(imageUrl);
+    return () => URL.revokeObjectURL(imageUrl);
+  }, [capturedFrame]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -51,6 +65,18 @@ export default function MapPage() {
       controller.abort();
     };
   }, [reload]);
+
+  const submitCapture = async () => {
+    if (!capturedFrame) return;
+    setReportStatus("loading");
+    try {
+      const result = await potholeService.reportDetection(capturedFrame);
+      setReportStatus(result.detected ? "detected" : "not-detected");
+      if (result.detected) setReload((value) => value + 1);
+    } catch {
+      setReportStatus("error");
+    }
+  };
 
   if (!apiKey) {
     return (
@@ -92,6 +118,55 @@ export default function MapPage() {
           <div className="fixed bottom-6 right-6 z-20 flex flex-col gap-3">
             <Button onClick={requestPermission} size="lg" className="w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg">
               <Compass className="w-6 h-6" stroke="currentColor" />
+            </Button>
+          </div>
+        )}
+        <div className="fixed bottom-6 right-24 z-20">
+          <CameraCapture
+            onCapture={(frame) => {
+              setCapturedFrame(frame);
+              setReportStatus("idle");
+            }}
+          />
+        </div>
+        {capturedFrame && capturedImageUrl && (
+          <div className="fixed bottom-6 left-6 z-20 flex max-w-sm items-center gap-3 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-xl">
+            <img
+              src={capturedImageUrl}
+              alt="Captured road scene"
+              className="h-16 w-16 rounded object-cover"
+            />
+            <div className="min-w-0 text-xs">
+              <p className="font-medium">Capture ready</p>
+              <p className="text-muted-foreground">
+                {capturedFrame.lat.toFixed(5)}, {capturedFrame.lng.toFixed(5)}
+              </p>
+              <p className="text-muted-foreground">
+                {new Date(capturedFrame.capturedAt).toLocaleString()}
+              </p>
+              {reportStatus === "detected" && <p role="status">Pothole report saved.</p>}
+              {reportStatus === "not-detected" && <p role="status">No pothole detected.</p>}
+              {reportStatus === "error" && (
+                <p role="alert" className="text-destructive">Could not submit capture. Please try again.</p>
+              )}
+            </div>
+            <Button
+              size="sm"
+              onClick={() => void submitCapture()}
+              disabled={reportStatus === "loading" || reportStatus === "detected" || reportStatus === "not-detected"}
+            >
+              {reportStatus === "loading" ? "Analyzing..." : "Analyze"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setCapturedFrame(null);
+                setReportStatus("idle");
+              }}
+              aria-label="Discard capture"
+            >
+              Discard
             </Button>
           </div>
         )}
