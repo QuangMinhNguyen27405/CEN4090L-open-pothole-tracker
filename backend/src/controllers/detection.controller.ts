@@ -13,6 +13,7 @@ import {
   type DetectionResult,
 } from "../services/detection.service.ts";
 import { persistDetection } from "../services/detection-report.service.ts";
+import { publishPotholeUpdate } from "../services/pothole-events.service.ts";
 import { createRoboflowImageAnalyzer } from "../services/roboflow-image-analyzer.ts";
 import { UPLOAD_DIR } from "../storage.ts";
 
@@ -77,6 +78,7 @@ async function saveDetectionImage(
 export const DetectionController = {
   async create(req: Request<{}, unknown, CreateDetectionBody>, res: Response) {
     const result = await persistDetection(req.body);
+    publishPotholeUpdate();
     res.status(201).json(result);
   },
 
@@ -192,6 +194,7 @@ export const DetectionController = {
       return;
     }
 
+    publishPotholeUpdate();
     res.status(201).json({
       detected: true,
       ...saved,
