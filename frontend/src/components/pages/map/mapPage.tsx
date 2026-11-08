@@ -7,6 +7,7 @@ import CompassMarker from "./compassMarker";
 import { useCompass } from "./authHook";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import CameraCapture, { type CapturedFrame } from "./cameraCapture";
 import { Compass } from "lucide-react";
 
 // Keep the original map's fallback location and presentation.
@@ -20,7 +21,19 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
+  const [capturedFrame, setCapturedFrame] = useState<CapturedFrame | null>(null);
+  const [capturedImageUrl, setCapturedImageUrl] = useState("");
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+  useEffect(() => {
+    if (!capturedFrame) {
+      setCapturedImageUrl("");
+      return;
+    }
+    const imageUrl = URL.createObjectURL(capturedFrame.image);
+    setCapturedImageUrl(imageUrl);
+    return () => URL.revokeObjectURL(imageUrl);
+  }, [capturedFrame]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -92,6 +105,35 @@ export default function MapPage() {
           <div className="fixed bottom-6 right-6 z-20 flex flex-col gap-3">
             <Button onClick={requestPermission} size="lg" className="w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg">
               <Compass className="w-6 h-6" stroke="currentColor" />
+            </Button>
+          </div>
+        )}
+        <div className="fixed bottom-6 right-24 z-20">
+          <CameraCapture onCapture={setCapturedFrame} />
+        </div>
+        {capturedFrame && capturedImageUrl && (
+          <div className="fixed bottom-6 left-6 z-20 flex max-w-sm items-center gap-3 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-xl">
+            <img
+              src={capturedImageUrl}
+              alt="Captured road scene"
+              className="h-16 w-16 rounded object-cover"
+            />
+            <div className="min-w-0 text-xs">
+              <p className="font-medium">Capture ready</p>
+              <p className="text-muted-foreground">
+                {capturedFrame.lat.toFixed(5)}, {capturedFrame.lng.toFixed(5)}
+              </p>
+              <p className="text-muted-foreground">
+                {new Date(capturedFrame.capturedAt).toLocaleString()}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCapturedFrame(null)}
+              aria-label="Discard capture"
+            >
+              Discard
             </Button>
           </div>
         )}
