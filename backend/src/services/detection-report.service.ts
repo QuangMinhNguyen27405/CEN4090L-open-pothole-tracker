@@ -29,7 +29,10 @@ export async function persistDetection(detection: PersistDetectionInput) {
      updated AS (
        UPDATE potholes SET detection_count = detection_count + 1,
          last_detected_at = now(),
-         confidence = greatest(confidence, $3)
+         confidence = greatest(confidence, $3),
+         review_status = CASE WHEN review_status = 'rejected' THEN 'pending' ELSE review_status END,
+         reviewed_by = CASE WHEN review_status = 'rejected' THEN NULL ELSE reviewed_by END,
+         reviewed_at = CASE WHEN review_status = 'rejected' THEN NULL ELSE reviewed_at END
        FROM nearby WHERE id = nearby_id
        RETURNING ${POTHOLE_COLUMNS}
      ),

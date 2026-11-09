@@ -22,6 +22,7 @@ export const NearbyPotholesModel = {
                 ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
                 $3
               )
+          AND review_status <> 'rejected'
         ORDER BY "distanceMeters", id
         LIMIT $4`,
       [options.longitude, options.latitude, options.radiusMeters, options.limit],
