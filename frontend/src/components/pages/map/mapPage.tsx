@@ -21,6 +21,7 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
+  const [showUpdateNotice, setShowUpdateNotice] = useState(false);
   const [capturedFrame, setCapturedFrame] = useState<CapturedFrame | null>(null);
   const [capturedImageUrl, setCapturedImageUrl] = useState("");
   const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "detected" | "not-detected" | "error">("idle");
@@ -65,6 +66,23 @@ export default function MapPage() {
       controller.abort();
     };
   }, [reload]);
+
+  useEffect(() => {
+    const events = new EventSource(
+      `${import.meta.env.VITE_API_URL || ""}/api/events`,
+    );
+    events.onmessage = () => {
+      setReload((value) => value + 1);
+      setShowUpdateNotice(true);
+    };
+    return () => events.close();
+  }, []);
+
+  useEffect(() => {
+    if (!showUpdateNotice) return;
+    const timeout = window.setTimeout(() => setShowUpdateNotice(false), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [showUpdateNotice]);
 
   const submitCapture = async () => {
     if (!capturedFrame) return;
@@ -114,6 +132,14 @@ export default function MapPage() {
             <PotholeMarker key={pothole._id} pothole={pothole} />
           ))}
         </GoogleMap>
+        {showUpdateNotice && (
+          <div
+            role="status"
+            className="fixed top-20 left-1/2 z-20 -translate-x-1/2 rounded-md border border-border bg-popover px-4 py-2 text-sm text-popover-foreground shadow-lg"
+          >
+            New pothole report received. Map refreshed.
+          </div>
+        )}
         {needsPermission && (
           <div className="fixed bottom-6 right-6 z-20 flex flex-col gap-3">
             <Button onClick={requestPermission} size="lg" className="w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg">
