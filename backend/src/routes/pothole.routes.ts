@@ -5,7 +5,7 @@ import {
   listQuery,
   PotholeController,
 } from "../controllers/pothole.controller.ts";
-import { authenticate } from "../middleware/auth.middleware.ts";
+import { attachUserFromToken, authenticate } from "../middleware/auth.middleware.ts";
 import { idParams, validate } from "../middleware/validate.middleware.ts";
 
 export const potholeRouter = Router();
@@ -24,6 +24,12 @@ potholeRouter.get(
   "/:id",
   validate({ params: idParams }),
   PotholeController.getById,
+);
+potholeRouter.get(
+  "/:id/confirmations",
+  attachUserFromToken,
+  validate({ params: idParams }),
+  PotholeController.confirmations,
 );
 potholeRouter.post(
   "/:id/confirmations",

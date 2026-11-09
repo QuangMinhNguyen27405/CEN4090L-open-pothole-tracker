@@ -25,12 +25,33 @@ const PotholeMarker = ({ pothole }: PotholeMarkerProps) => {
   const [confirmationSummary, setConfirmationSummary] = useState<ConfirmationSummary | null>(null);
   const [isSubmittingConfirmation, setIsSubmittingConfirmation] = useState(false);
   const [confirmationError, setConfirmationError] = useState("");
+  const [myResponse, setMyResponse] = useState<boolean | null>(null);
+  const [confirmationsFailed, setConfirmationsFailed] = useState(false);
+  const viewerId = user?.id;
+
+  React.useEffect(() => {
+    if (!isModalOpen) return;
+    const controller = new AbortController();
+    setConfirmationsFailed(false);
+    potholeService
+      .getConfirmations(pothole._id, controller.signal)
+      .then((summary) => {
+        setConfirmationSummary(summary);
+        setMyResponse(summary.my_response);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setConfirmationsFailed(true);
+      });
+    return () => controller.abort();
+  }, [isModalOpen, pothole._id, viewerId]);
 
   const submitConfirmation = async (stillThere: boolean) => {
     setIsSubmittingConfirmation(true);
     setConfirmationError("");
     try {
       setConfirmationSummary(await potholeService.confirm(pothole._id, stillThere));
+      setMyResponse(stillThere);
+      setConfirmationsFailed(false);
     } catch {
       setConfirmationError("Couldn't save your confirmation. Please try again.");
     } finally {
@@ -194,7 +215,8 @@ const PotholeMarker = ({ pothole }: PotholeMarkerProps) => {
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant={myResponse === true ? "default" : "outline"}
+                    aria-pressed={myResponse === true}
                     disabled={isSubmittingConfirmation}
                     onClick={() => void submitConfirmation(true)}
                   >
@@ -202,7 +224,8 @@ const PotholeMarker = ({ pothole }: PotholeMarkerProps) => {
                   </Button>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant={myResponse === false ? "default" : "outline"}
+                    aria-pressed={myResponse === false}
                     disabled={isSubmittingConfirmation}
                     onClick={() => void submitConfirmation(false)}
                   >
@@ -225,6 +248,11 @@ const PotholeMarker = ({ pothole }: PotholeMarkerProps) => {
               {confirmationError && (
                 <p role="alert" className="text-xs text-destructive">
                   {confirmationError}
+                </p>
+              )}
+              {confirmationsFailed && (
+                <p role="status" className="text-xs text-muted-foreground">
+                  Community responses are unavailable right now.
                 </p>
               )}
               {confirmationSummary && (
