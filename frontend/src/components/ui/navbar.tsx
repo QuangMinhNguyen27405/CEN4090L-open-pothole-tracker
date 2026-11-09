@@ -18,12 +18,20 @@ const navigation = [
   { name: "Map", href: "/map" },
 ];
 
+const useNavigationItems = () => {
+  const { user } = useAuth();
+  return user?.role === "admin"
+    ? [...navigation, { name: "Admin", href: "/admin" }]
+    : navigation;
+};
+
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
 export const Navbar = () => {
   const location = useLocation();
+  const navigationItems = useNavigationItems();
 
   if (isMobile) {
     return <MobileNavbar />;
@@ -61,7 +69,7 @@ export const Navbar = () => {
             </div>
             <div className="hidden sm:ml-6 sm:block">
               <div className="flex space-x-4">
-                {navigation.map((item) => {
+                {navigationItems.map((item) => {
                   const isCurrentPage = location.pathname === item.href;
                   return (
                     <Link
@@ -90,7 +98,7 @@ export const Navbar = () => {
 
       <DisclosurePanel className="sm:hidden">
         <div className="space-y-1 px-2 pt-2 pb-3">
-          {navigation.map((item) => {
+          {navigationItems.map((item) => {
             const isCurrentPage = location.pathname === item.href;
             return (
               <DisclosureButton
@@ -116,6 +124,7 @@ export const Navbar = () => {
 
 const MobileNavbar = () => {
   const location = useLocation();
+  const navigationItems = useNavigationItems();
 
   return (
     <Disclosure
@@ -140,7 +149,7 @@ const MobileNavbar = () => {
             {/* Navigation items */}
             <div className="hidden sm:ml-6 sm:block">
               <div className="flex space-x-4">
-                {navigation.map((item) => {
+                {navigationItems.map((item) => {
                   const isCurrentPage = location.pathname === item.href;
                   return (
                     <Link
@@ -168,7 +177,7 @@ const MobileNavbar = () => {
       </div>
 
       <DisclosurePanel className="sm:hidden flex flex-col items-start ml-2 space-y-2">
-        {navigation.map((item) => {
+        {navigationItems.map((item) => {
           const isCurrentPage = location.pathname === item.href;
           return (
             <DisclosureButton

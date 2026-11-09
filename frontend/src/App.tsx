@@ -9,6 +9,7 @@ import { AuthProvider } from "@/context/auth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppLayout from "@/components/ui/appLayout";
 import MapPage from "@/components/pages/map/mapPage";
+import AdminPage from "@/components/pages/admin/adminPage";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ export const App = () => {
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/map" element={<MapPage />} />
+                <Route path="/admin" element={<AdminPage />} />
               </Route>
             </Routes>
           </AuthProvider>
