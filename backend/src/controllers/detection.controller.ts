@@ -77,13 +77,26 @@ async function saveDetectionImage(
 
 export const DetectionController = {
   async create(req: Request<{}, unknown, CreateDetectionBody>, res: Response) {
-    const result = await persistDetection(req.body);
+    const result = await persistDetection({ ...req.body, userId: req.user!.id });
     publishPotholeUpdate();
     res.status(201).json(result);
   },
 
   async uploadImage(req: Request<IdParams>, res: Response) {
     const { id } = req.params;
+    const { rows } = await pool.query<{ user_id: number | null }>(
+      `SELECT user_id FROM detections WHERE id = $1`,
+      [id],
+    );
+    if (!rows[0]) {
+      res.status(404).json({ error: "Detection not found" });
+      return;
+    }
+    if (rows[0].user_id !== req.user!.id && req.user!.role !== "admin") {
+      res.status(403).json({ error: "Not allowed to update this detection" });
+      return;
+    }
+
     if (!Buffer.isBuffer(req.body)) {
       res
         .status(415)
@@ -187,6 +200,7 @@ export const DetectionController = {
       modelVersion: ROBOFLOW_MODEL_VERSION,
       capturedAt: req.query.capturedAt,
       gpsAccuracy: req.query.gpsAccuracy,
+      userId: req.user!.id,
     });
     const imageUrl = await saveDetectionImage(saved.id, req.body, ext);
     if (!imageUrl) {

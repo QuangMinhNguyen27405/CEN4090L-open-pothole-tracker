@@ -247,10 +247,10 @@ const ProfilePage = () => {
                   <CameraIcon className="h-6 w-6 text-secondary-foreground" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold text-secondary-foreground">
-                  {stats?.detectionSessions ?? 0}
+                  {stats?.totalDetections ?? 0}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Detection Sessions
+                  Total Detections
                 </div>
               </div>
             </div>

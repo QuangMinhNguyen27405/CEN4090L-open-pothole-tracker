@@ -90,11 +90,7 @@ export const UserController = {
 
   async getMyStats(req: Request, res: Response) {
     const stats = await UserModel.getStats(req.user!.id);
-    res.json({
-      message: "Statistics retrieved successfully",
-      // detectionSessions stays 0 until detection sessions are stored
-      data: { ...stats, detectionSessions: 0 },
-    });
+    res.json({ message: "Statistics retrieved successfully", data: stats });
   },
 
   async getUser(req: Request, res: Response) {

@@ -41,10 +41,12 @@ CREATE TABLE detections (
   gps_accuracy real CHECK (gps_accuracy >= 0),
   image_path text,
   captured_at timestamptz NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  user_id integer REFERENCES users (id) ON DELETE SET NULL
 );
 
 CREATE INDEX detections_pothole_id_idx ON detections (pothole_id);
+CREATE INDEX detections_user_id_idx ON detections (user_id);
 
 CREATE TABLE confirmations (
   pothole_id integer NOT NULL REFERENCES potholes (id) ON DELETE CASCADE,

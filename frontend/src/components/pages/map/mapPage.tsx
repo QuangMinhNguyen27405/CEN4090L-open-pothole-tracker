@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { isAxiosError } from "axios";
 import { Map as GoogleMap } from "@vis.gl/react-google-maps";
+import { useAuth } from "@/context/auth";
 import { useTheme } from "@/context/theme";
 import { potholeService, type Pothole } from "@/services/potholeService";
 import PotholeMarker from "./potholeMarker";
@@ -15,6 +18,7 @@ const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 };
 
 export default function MapPage() {
   const { theme } = useTheme();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { heading, needsPermission, requestPermission } = useCompass();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [potholes, setPotholes] = useState<Pothole[]>([]);
@@ -24,7 +28,7 @@ export default function MapPage() {
   const [showUpdateNotice, setShowUpdateNotice] = useState(false);
   const [capturedFrame, setCapturedFrame] = useState<CapturedFrame | null>(null);
   const [capturedImageUrl, setCapturedImageUrl] = useState("");
-  const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "detected" | "not-detected" | "error">("idle");
+  const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "detected" | "not-detected" | "signed-out" | "error">("idle");
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
@@ -91,8 +95,10 @@ export default function MapPage() {
       const result = await potholeService.reportDetection(capturedFrame);
       setReportStatus(result.detected ? "detected" : "not-detected");
       if (result.detected) setReload((value) => value + 1);
-    } catch {
-      setReportStatus("error");
+    } catch (error) {
+      setReportStatus(
+        isAxiosError(error) && error.response?.status === 401 ? "signed-out" : "error",
+      );
     }
   };
 
@@ -148,12 +154,19 @@ export default function MapPage() {
           </div>
         )}
         <div className="fixed bottom-6 right-24 z-20">
-          <CameraCapture
-            onCapture={(frame) => {
-              setCapturedFrame(frame);
-              setReportStatus("idle");
-            }}
-          />
+          {user && (
+            <CameraCapture
+              onCapture={(frame) => {
+                setCapturedFrame(frame);
+                setReportStatus("idle");
+              }}
+            />
+          )}
+          {!user && !isAuthLoading && (
+            <Button asChild className="shadow-lg">
+              <Link to="/login">Sign in to report a pothole</Link>
+            </Button>
+          )}
         </div>
         {capturedFrame && capturedImageUrl && (
           <div className="fixed bottom-6 left-6 z-20 flex max-w-sm items-center gap-3 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-xl">
@@ -172,6 +185,11 @@ export default function MapPage() {
               </p>
               {reportStatus === "detected" && <p role="status">Pothole report saved.</p>}
               {reportStatus === "not-detected" && <p role="status">No pothole detected.</p>}
+              {reportStatus === "signed-out" && (
+                <p role="alert" className="text-destructive">
+                  Your session has ended. <Link to="/login" className="underline">Sign in</Link> to submit this capture.
+                </p>
+              )}
               {reportStatus === "error" && (
                 <p role="alert" className="text-destructive">Could not submit capture. Please try again.</p>
               )}
