@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth";
-import axios from "axios";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const LoginPage = () => {
   return (
@@ -80,9 +80,7 @@ export const LoginWithGoogle = () => {
       )}
       {error && (
         <div className="text-sm text-red-600 text-center bg-red-50 dark:bg-red-900/20 p-2 rounded">
-          {axios.isAxiosError(error)
-            ? error.response?.data?.errors[0].message || "Login failed"
-            : error.message}
+          {getApiErrorMessage(error, "Login failed")}
         </div>
       )}
       <Button
@@ -157,9 +155,7 @@ const LoginWithEmail = () => {
 
       {error && (
         <div className="text-sm text-red-600 text-center bg-red-50 dark:bg-red-900/20 p-2 rounded">
-          {axios.isAxiosError(error)
-            ? error.response?.data?.errors[0].message || "Login failed"
-            : error.message}
+          {getApiErrorMessage(error, "Login failed")}
         </div>
       )}
 

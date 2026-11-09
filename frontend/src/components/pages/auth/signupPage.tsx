@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/auth";
 import { LoginWithGoogle } from "@/components/pages/auth/loginPage";
-import axios from "axios";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const SignupPage = () => {
   return (
@@ -109,9 +109,7 @@ const EmailSignup = () => {
 
       {error && (
         <div className="text-sm text-red-600 text-center bg-red-50 dark:bg-red-900/20 p-2 rounded">
-          {axios.isAxiosError(error)
-            ? error.response?.data?.errors[0].message || "Signup failed"
-            : error.message}
+          {getApiErrorMessage(error, "Signup failed")}
         </div>
       )}
 
