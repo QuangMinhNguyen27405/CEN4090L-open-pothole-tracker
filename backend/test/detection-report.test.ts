@@ -5,8 +5,13 @@ import { after, mock, test } from "node:test";
 import express from "express";
 import sharp from "sharp";
 import { pool } from "../src/db.ts";
+import { signAccessToken } from "../src/middleware/auth.middleware.ts";
 import { errorHandler } from "../src/middleware/error.middleware.ts";
+import { UserModel, type User } from "../src/models/user.model.ts";
 import { router } from "../src/routes/index.ts";
+
+process.env.JWT_SECRET = "test-secret";
+mock.method(UserModel, "findById", async () => ({ id: 1, role: "user", isActive: true }) as User);
 
 const app = express();
 app.use(express.json());
@@ -32,7 +37,13 @@ const postImage = (url: string, image: Buffer) =>
   new Promise<{ status: number; body: ReportResponse }>((resolve, reject) => {
     const request = httpRequest(
       new URL(url),
-      { method: "POST", headers: { "Content-Type": "image/jpeg" } },
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "image/jpeg",
+          Authorization: `Bearer ${signAccessToken(1)}`,
+        },
+      },
       (response) => {
         const chunks: Buffer[] = [];
         response.on("data", (chunk: Buffer) => chunks.push(chunk));

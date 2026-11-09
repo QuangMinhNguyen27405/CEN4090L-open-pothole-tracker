@@ -122,8 +122,7 @@ export const UserModel = {
     const { rows } = await pool.query(
       `SELECT
          (SELECT count(*) FROM potholes WHERE reported_by = $1)::int AS "potholesDetected",
-         (SELECT coalesce(sum(detection_count), 0) FROM potholes WHERE reported_by = $1)::int
-           AS "totalDetections",
+         (SELECT count(*) FROM detections WHERE user_id = $1)::int AS "totalDetections",
          (SELECT count(*) FROM confirmations WHERE user_id = $1)::int AS "confirmations"`,
       [id]
     );

@@ -77,6 +77,7 @@ test("a new detection sends a matched rejected report back for review", async ()
     confidence: 0.9,
     modelVersion: "v1",
     capturedAt: "2026-11-09T10:00:00Z",
+    userId: 1,
   });
 
   assert.match(

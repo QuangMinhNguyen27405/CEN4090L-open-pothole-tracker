@@ -15,7 +15,6 @@ const UserProfileSchema = zod.object({
 const UserStatsSchema = zod.object({
   data: zod.object({
     potholesDetected: zod.number(),
-    detectionSessions: zod.number(),
     totalDetections: zod.number(),
   }),
 });
@@ -35,7 +34,6 @@ export interface UserProfile {
 
 export interface UserStats {
   potholesDetected: number;
-  detectionSessions: number;
   totalDetections: number;
 }
 

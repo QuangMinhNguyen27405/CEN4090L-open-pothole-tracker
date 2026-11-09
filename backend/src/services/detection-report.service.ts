@@ -9,6 +9,7 @@ export type PersistDetectionInput = {
   modelVersion: string;
   capturedAt: string;
   gpsAccuracy?: number;
+  userId: number;
 };
 
 type PersistedDetectionRow = Record<string, unknown> & {
@@ -37,8 +38,8 @@ export async function persistDetection(detection: PersistDetectionInput) {
        RETURNING ${POTHOLE_COLUMNS}
      ),
      inserted AS (
-       INSERT INTO potholes (location, confidence)
-       SELECT geog, $3 FROM point
+       INSERT INTO potholes (location, confidence, reported_by)
+       SELECT geog, $3, $8::int FROM point
        WHERE NOT EXISTS (SELECT 1 FROM nearby)
        RETURNING ${POTHOLE_COLUMNS}
      ),
@@ -47,8 +48,8 @@ export async function persistDetection(detection: PersistDetectionInput) {
      ),
      detection AS (
        INSERT INTO detections
-         (pothole_id, location, confidence, model_version, gps_accuracy, captured_at)
-       SELECT pothole.id, point.geog, $3, $5, $6, $7 FROM pothole, point
+         (pothole_id, location, confidence, model_version, gps_accuracy, captured_at, user_id)
+       SELECT pothole.id, point.geog, $3, $5, $6, $7, $8::int FROM pothole, point
        RETURNING id
      )
      SELECT detection.id AS detection_id, pothole.* FROM detection, pothole`,
@@ -60,6 +61,7 @@ export async function persistDetection(detection: PersistDetectionInput) {
       detection.modelVersion,
       detection.gpsAccuracy ?? null,
       detection.capturedAt,
+      detection.userId,
     ],
   );
   const { detection_id, ...pothole } = rows[0]!;
