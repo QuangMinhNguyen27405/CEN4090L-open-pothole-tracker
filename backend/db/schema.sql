@@ -22,10 +22,15 @@ CREATE TABLE potholes (
   reported_by integer REFERENCES users (id) ON DELETE SET NULL,
   image_urls text[] NOT NULL DEFAULT '{}',
   created_at timestamptz NOT NULL DEFAULT now(),
-  last_detected_at timestamptz NOT NULL DEFAULT now()
+  last_detected_at timestamptz NOT NULL DEFAULT now(),
+  review_status text NOT NULL DEFAULT 'pending'
+    CHECK (review_status IN ('pending', 'verified', 'rejected')),
+  reviewed_by integer REFERENCES users (id) ON DELETE SET NULL,
+  reviewed_at timestamptz
 );
 
 CREATE INDEX potholes_location_idx ON potholes USING gist (location);
+CREATE INDEX potholes_review_queue_idx ON potholes (review_status, last_detected_at DESC);
 
 CREATE TABLE detections (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

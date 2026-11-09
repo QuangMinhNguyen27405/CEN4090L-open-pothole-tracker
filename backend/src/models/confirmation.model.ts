@@ -5,6 +5,7 @@ export type ConfirmationStatus = "still_there" | "not_there";
 export type Confirmation = {
   potholeId: number;
   userId: number;
+  username?: string;
   status: ConfirmationStatus;
   confirmedAt: Date;
 };
@@ -22,25 +23,11 @@ export const CONFIRMATION_COLUMNS = `
   created_at AS "confirmedAt"`;
 
 export const ConfirmationModel = {
-  // Returns null if this user already confirmed this pothole.
-  create: async (data: {
-    potholeId: number;
-    userId: number;
-    status: ConfirmationStatus;
-  }): Promise<Confirmation | null> => {
-    const { rows } = await pool.query<Confirmation>(
-      `INSERT INTO confirmations (pothole_id, user_id, still_there)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (pothole_id, user_id) DO NOTHING
-       RETURNING ${CONFIRMATION_COLUMNS}`,
-      [data.potholeId, data.userId, data.status === "still_there"]
-    );
-    return rows[0] ?? null;
-  },
-
   findByPothole: async (potholeId: number): Promise<Confirmation[]> => {
     const { rows } = await pool.query<Confirmation>(
-      `SELECT ${CONFIRMATION_COLUMNS} FROM confirmations
+      `SELECT ${CONFIRMATION_COLUMNS},
+         (SELECT username FROM users WHERE users.id = confirmations.user_id) AS username
+       FROM confirmations
        WHERE pothole_id = $1
        ORDER BY created_at DESC`,
       [potholeId]

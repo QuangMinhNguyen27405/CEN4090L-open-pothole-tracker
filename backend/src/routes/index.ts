@@ -6,6 +6,7 @@ import { authRouter } from "./auth.routes.ts";
 import { userRouter } from "./user.routes.ts";
 import { nearbyPotholesRouter } from "./nearby-potholes.routes.ts";
 import { eventsRouter } from "./events.routes.ts";
+import { adminRouter } from "./admin.routes.ts";
 
 export const router = Router();
 
@@ -16,3 +17,4 @@ router.use("/health", healthRouter);
 router.use("/auth", authRouter);
 router.use("/users", userRouter);
 router.use("/events", eventsRouter);
+router.use("/admin", adminRouter);
