@@ -66,6 +66,14 @@ export default function MapPage() {
     };
   }, [reload]);
 
+  useEffect(() => {
+    const events = new EventSource(
+      `${import.meta.env.VITE_API_URL || ""}/api/events`,
+    );
+    events.onmessage = () => setReload((value) => value + 1);
+    return () => events.close();
+  }, []);
+
   const submitCapture = async () => {
     if (!capturedFrame) return;
     setReportStatus("loading");
