@@ -155,6 +155,10 @@ sequenceDiagram
   Browser-->>User: Show result and map update
 ```
 
+**Increment 2 camera/GPS interaction (FR-04):** The map's capture control opens a modal that explains the camera and location purposes before the user starts the camera. The browser requests video access only after **Start camera** is selected. On **Capture**, it creates one JPEG frame (scaled to at most 1600 pixels on its longest side and checked against the API's 5 MB limit), requests a fresh high-accuracy location reading, validates the returned coordinates and accuracy, and keeps the image, location, capture time, and reported GPS accuracy in the browser preview. The user can discard the preview or select **Analyze** to send the image and location to `POST /api/detections/report`. Closing the modal stops its video tracks; permission denial, unavailable camera/location, and location timeout have visible error states. The map's separate location-centering request can occur when the map opens, before the capture modal is used.
+
+The frame and GPS reading are collected in sequence, so movement or poor GPS accuracy can make the stored location differ from where the image was taken. A maximum acceptable GPS error and a policy for whether such captures should be submitted have not been agreed. The camera and location workflow requires browser support and a secure context on deployed devices; device-specific behavior remains to be verified.
+
 ### Sequence diagram — view map
 
 ```mermaid
