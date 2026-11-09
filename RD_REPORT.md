@@ -3,7 +3,7 @@
 **Project:** Open Pothole Tracker
 
 **Version:** 2.0
-**Group Members:** Linh Nguyen, Thien Le, Vinh Do, Hoang Vu, Quang Minh Nguyen
+**Authors:** Linh Nguyen, Thien Le, Vinh Do, Hoang Vu, Quang Minh Nguyen
 
 ## 1. Overview and scope
 
