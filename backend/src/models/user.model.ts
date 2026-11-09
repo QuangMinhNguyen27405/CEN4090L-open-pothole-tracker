@@ -100,6 +100,13 @@ export const UserModel = {
     );
   },
 
+  setRole: async (id: number, role: Role): Promise<void> => {
+    await pool.query(
+      `UPDATE users SET role = $2, updated_at = now() WHERE id = $1`,
+      [id, role]
+    );
+  },
+
   deactivate: async (id: number): Promise<boolean> => {
     const { rowCount } = await pool.query(
       `UPDATE users SET is_active = false, updated_at = now()
