@@ -6,6 +6,7 @@ import {
   longitude,
   type IdParams,
 } from "../middleware/validate.middleware.ts";
+import { ConfirmationModel } from "../models/confirmation.model.ts";
 import { PotholeModel } from "../models/pothole.model.ts";
 
 export const listQuery = z.object({
@@ -60,6 +61,18 @@ export const PotholeController = {
       [line, bufferMeters],
     );
     res.json(rows);
+  },
+
+  async confirmations(req: Request<IdParams>, res: Response) {
+    const summary = await ConfirmationModel.findViewerSummary(
+      req.params.id,
+      req.user?.id ?? null,
+    );
+    if (!summary) {
+      res.status(404).json({ error: "Pothole not found" });
+      return;
+    }
+    res.json(summary);
   },
 
   async confirm(req: Request<IdParams, unknown, ConfirmBody>, res: Response) {
