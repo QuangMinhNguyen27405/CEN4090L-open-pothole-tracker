@@ -39,7 +39,7 @@ export const PotholeController = {
            WHERE pothole_id = potholes.id AND image_path IS NOT NULL
            ORDER BY captured_at DESC
          ) AS image_urls
-       FROM potholes WHERE id = $1`,
+       FROM potholes WHERE id = $1 AND review_status <> 'rejected'`,
       [req.params.id],
     );
     if (!rows[0]) {
@@ -55,6 +55,7 @@ export const PotholeController = {
     const { rows } = await pool.query(
       `SELECT ${POTHOLE_COLUMNS} FROM potholes
        WHERE ST_DWithin(location, ST_GeomFromGeoJSON($1)::geography, $2)
+         AND review_status <> 'rejected'
        ORDER BY ST_LineLocatePoint(ST_GeomFromGeoJSON($1), location::geometry)`,
       [line, bufferMeters],
     );
