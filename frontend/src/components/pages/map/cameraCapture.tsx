@@ -156,6 +156,7 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
           0.85,
         );
       });
+      if (session !== sessionRef.current) return;
       if (image.size > MAX_IMAGE_BYTES) throw new Error("Image is too large.");
       const position = await getCurrentPosition();
       if (session !== sessionRef.current) return;

@@ -6,7 +6,7 @@
 
 **Authors:** Linh Nguyen, Thien Le, Vinh Do, Hoang Vu, Quang Minh Nguyen
 
-**Repository inspected:** 2026-11-09, through commit `a064a11`, plus the Increment 2 camera/GPS changes recorded below.
+**Repository inspected:** 2026-11-09, through commit `5bf6b0a`.
 
 > This report distinguishes source implementation, executed test results, member-reported browser checks, and planned verification. Planned tests are not presented as passed tests.
 
@@ -48,29 +48,16 @@ The browser checks recorded on 2026-10-05 are historical: a team member reported
 | Check | Expected result | Actual result and evidence | Status |
 | --- | --- | --- | --- |
 | Backend automated tests | Covered API/model cases pass. | `npm test` passed 8/8 tests: 3 detection/report tests, 4 nearby-pothole tests, and 1 event-stream test. Detector and database behavior are mocked in these tests. | Passed for covered cases; not a live PostGIS or Roboflow integration test. |
-| Frontend build and TypeScript | Type checking and production bundling succeed. | The earlier `npm run build` passed with Node 24.18.0. After the Increment 2 capture change, TypeScript (`tsc -b`) and Vite production build passed with Node 24.22.2. The build emitted third-party annotation and large-chunk warnings. | Passed with warnings; browser behavior not verified. |
-| Frontend lint | No lint errors. | After the Increment 2 capture change, ESLint exited 0 with two existing hook-dependency warnings in `loginPage.tsx`. | Passed with warnings. |
+| Frontend build and TypeScript | Type checking and production bundling succeed. | `npm run build` passed with Node 24.18.0; third-party annotation and large-chunk warnings were emitted. | Passed with warnings. |
+| Frontend lint | No lint errors. | The last recorded lint run was 2026-10-05: exit code 0, with two hook-dependency warnings. Lint was not rerun on 2026-11-09. | Historical pass with warnings; current result not verified. |
 | Public page/map display | Home/navigation/themes and configured map display work. | A team member reported the basic page/map check working on 2026-10-05; browser/device versions were not recorded. | Historical member-reported smoke check; current browser behavior not verified. |
 | `GET /api/health` | API reaches its database and returns `{ "status": "ok" }`. | A team member reported the expected response on 2026-10-05. | Historical connectivity check; not rerun. |
 | `GET /api/auth/me`, logged out | HTTP 401 for no authenticated session. | HTTP 401 shown in the 2026-10-05 browser-console evidence. | Historical expected response; account flows not verified. |
 | `GET /api/potholes?limit=100` and map data | The client receives records matching the map's expected schema. | The 2026-10-05 HTTP 404 predates the current list route. Current source inspection shows the frontend request and backend `{ data: [...] }` response contract align; no current browser request with populated data is recorded. | Source contract appears aligned; data-backed map rendering not verified. |
 | Nearby lookup | Valid/invalid query behavior and spatial results are correct. | Four automated tests passed as part of the 2026-11-09 backend suite; query parameters are checked, but database calls are mocked. | Automated validation passed; live PostGIS behavior not verified. |
-| Camera/report flow and live map updates | A capture is analyzed, stored when applicable, and reflected on an open map. | Capture/report submission, SSE subscription, and report refresh are present in source. The Increment 2 capture UI adds an explicit camera start, purpose text, permission/error states, and stream cleanup. The event-stream delivery test passes; full browser-to-database flow was not run. | Implemented; end-to-end behavior not verified. |
+| Camera/report flow and live map updates | A capture is analyzed, stored when applicable, and reflected on an open map. | Capture/report submission, SSE subscription, and report refresh are present in source. The event-stream delivery test passes; full browser-to-database flow was not run. | Implemented; end-to-end behavior not verified. |
 
 Implemented features still require execution-based tests; implementation alone is not counted as evidence that a functional requirement passes.
-
-### 3.1 Increment 2 — camera and GPS capture (Vinh Do)
-
-**Implemented on 2026-11-09:** The existing map capture component now explains why camera and location access are requested before starting the camera. It waits for **Start camera** before calling `getUserMedia`, captures one JPEG scaled to at most 1600 pixels on its longest side, rejects files above the API's 5 MB limit or invalid GPS readings, requests a fresh GPS position, and passes the image, coordinates, capture time, and GPS accuracy to the existing map preview and `POST /api/detections/report` submission flow. It distinguishes camera denial/unavailability and location denial/unavailability/timeout, offers camera retry, uses the shared Radix modal for keyboard focus and Escape handling, stops media tracks on close/unmount, and ignores late camera/GPS results after the dialog closes. The frontend source was checked with TypeScript, ESLint, and a production build using Node 24.22.2; all three completed, with the warnings recorded above. These checks do not exercise browser permissions or the backend; backend tests were not rerun for this frontend change.
-
-| Remaining test | Expected evidence |
-| --- | --- |
-| Browser permissions and lifecycle | On a real mobile browser and a desktop browser, verify allowed, denied, unavailable, and timeout cases; camera retry; Escape/close while camera or GPS is pending; and that the camera indicator turns off on close. Record browser/device versions and screenshots or observations. |
-| Capture-to-API flow | With a controlled detector and test database, capture a road image, inspect JPEG dimensions and size plus request `lat`, `lng`, `capturedAt`, and `gpsAccuracy`, then verify detected/no-detection/error responses, saved image/report state, and map refresh. Confirm **Discard** sends no request. |
-| Geospatial follow-up from Increment 1 | With known PostGIS points, verify nearby boundary inclusion, meter distances, nearest-first ordering, empty results, and the 10-meter duplicate match against actual rows; inspect the spatial index plan with representative data. The four existing nearby tests use mocks. |
-| Accessibility and compatibility | Check focus return and keyboard operation of the modal/preview, screen-reader announcements, mobile layout, and browser support for camera and geolocation. |
-
-**Concerns to resolve:** The GPS reading is requested after the image is captured, so movement or an inaccurate reading may place a report at the wrong point; no maximum GPS-accuracy threshold is defined. The detection-report route currently has no authentication middleware even though RD UC-1 describes a signed-in user; confirm the intended access policy with the authentication/backend owners before relying on it. Camera/geolocation APIs and the map depend on browser permissions and deployment configuration, so a successful build is not evidence of device support or a complete end-to-end flow.
 
 For API and database scenarios, we plan to run the backend with a test PostGIS database, send requests with valid and invalid inputs, and verify both response status/body and resulting database state. For browser flows, we plan to use test accounts and mock browser permissions such as camera and location. We will record the test date, setup, steps, expected result, actual result, and any defects.
 
