@@ -16,8 +16,9 @@
 | --- | --- | --- |
 | TypeScript | Backend API, models, middleware, and frontend React components (`.ts`/`.tsx`). | One typed language across server and client; the backend enables strict type checking in `backend/tsconfig.json`. |
 | SQL | `backend/db/schema.sql` and parameterized queries in backend models. | Defines relational constraints and geospatial storage/queries through PostGIS. |
+| Python | `training/` scripts that download and prepare datasets and train, evaluate, run, and upload the detection model. | Ultralytics YOLO, PyTorch, and the Roboflow SDK are Python libraries. |
 
-The frontend uses HTML in `frontend/index.html` for the page shell and CSS/Tailwind utilities in `frontend/src/index.css` and component classes for presentation. JavaScript is used by the browser at runtime, generated from the TypeScript/Vite build, and used in `frontend/eslint.config.js`; these are standard parts of the web platform and lint tooling. The backend detection code is TypeScript and calls Roboflow; a separate Python model implementation is not included.
+The frontend uses HTML in `frontend/index.html` for the page shell and CSS/Tailwind utilities in `frontend/src/index.css` and component classes for presentation. JavaScript is used by the browser at runtime, generated from the TypeScript/Vite build, and used in `frontend/eslint.config.js`; these are standard parts of the web platform and lint tooling. The backend detection code is TypeScript and calls the hosted Roboflow model. The Python scripts in `training/` build and evaluate that model offline; they are not part of the running application.
 
 ## 2. Platforms, APIs, databases, and other technologies
 
@@ -35,6 +36,9 @@ The frontend uses HTML in `frontend/index.html` for the page shell and CSS/Tailw
 | Google Maps JavaScript API and `@vis.gl/react-google-maps` | Display the interactive map, pothole markers, and user-location indicator; requires a Maps API key and map ID. |
 | Browser Geolocation, Device Orientation, and MediaDevices APIs | Obtain the user's location and heading, and capture camera images with associated GPS coordinates. |
 | Sharp and Roboflow | Preprocess submitted images and perform pothole inference through the backend detection integration. |
+| Ultralytics YOLO11 and PyTorch | Fine-tune the pothole detection model in `training/` and run it locally for evaluation and prediction. |
+| Roboflow Python SDK | Download the training datasets and upload trained weights to the hosted model that the backend calls. |
+| Pillow, PyYAML, Requests, and python-dotenv | Copy the backend's image preprocessing, read dataset and settings files, and call the hosted model during evaluation. |
 | Server-Sent Events (SSE) | Send pothole-update notifications from the backend to open map clients, which then reload reports. |
 
 For local development, the Vite proxy forwards `/api` requests to `http://localhost:8000`; deployments must provide equivalent routing or configure an API origin. Google Maps, Firebase, Roboflow, and database access require their corresponding configuration and credentials.
@@ -51,7 +55,7 @@ Pothole details read public aggregate counts and the signed-in viewer's previous
 
 ## 3. Execution-based functional testing
 
-**Current verification status:** Recorded results below apply to their documented revisions and environments, not automatically to the current integrated implementation. Navigation, warning behavior, live-refresh recovery, and the combined details interface require verification. The last navigation browser run encountered address-label lookup failures; the source correction has not been rerun. Existing camera/detection fixtures require alignment with the current authenticated submission and explicit Start camera workflow. No new tests were run when preparing this revision.
+**Current verification status:** Recorded results below apply to their documented revisions and environments, not automatically to the current integrated implementation. Navigation, warning behavior, live-refresh recovery, and the combined details interface require verification. The last navigation browser run encountered address-label lookup failures; the source correction has not been rerun. Existing camera/detection fixtures require alignment with the current authenticated submission and explicit Start camera workflow. No new tests were run when preparing this revision, apart from the model training checks in section 3.3.
 
 **Recorded evidence on 2026-11-09:** Using Node 24.18.0 and npm 11.16.0, the backend test suite passed all 8 tests: detection/report persistence with a mocked detector/database, nearby-query validation and parameter handling, and event-stream delivery. The frontend TypeScript check and production build also passed. The build reported third-party annotation and large-chunk warnings. These results verify the covered automated checks; they do not establish full browser, live-service, or live-database behavior.
 
@@ -114,7 +118,7 @@ For the remaining API and database scenarios, we plan to run the backend with a 
 | FR-02 | Open the map, pan/zoom to a test area, select a report marker, and verify its details match the API response. | Basic map display was reported working historically. The source-level list contract appears aligned; populated-data markers/details are **not verified in a current browser test**. |
 | FR-03 | Open each public claim resource and verify its destination and content. | Public page display was reported working historically; individual external destinations are **not verified**. |
 | FR-04 | Grant camera and location permissions, capture an image, and verify the image and coordinates are available for submission. Repeat with permissions denied and verify a clear error. | Camera/GPS capture and submission are implemented in the frontend; the full browser permission/capture flow is **not verified**. |
-| FR-05 | Submit a supported image to the detection endpoint and verify the returned prediction format; also test invalid media, oversized input, and detector failure. | Automated tests cover qualifying/no qualifying mock predictions and invalid coordinates. A live Roboflow response and all media/failure boundaries are **not verified**. |
+| FR-05 | Submit a supported image to the detection endpoint and verify the returned prediction format; also test invalid media, oversized input, and detector failure. | Automated tests cover qualifying/no qualifying mock predictions and invalid coordinates. A live Roboflow response and all media/failure boundaries are **not verified**. The model training and evaluation scripts are checked in section 3.3; no trained model has been evaluated. |
 | FR-06 | Submit a report with valid coordinates and detection details, then retrieve it and compare the response to the saved database row. Repeat with invalid coordinates. | Detection persistence and list/detail routes exist; automated detection tests use mocked database calls. Live database retrieval and full browser flow are **not verified**. |
 | FR-07 | Create reports at nearby and distant coordinates, query the area, and verify nearby duplicates are matched while distant reports remain separate. | Nearby query validation and SQL parameter handling pass mocked automated tests. Live PostGIS spatial and duplicate behavior remain **unverified**. |
 | FR-08 | Submit a report while the map is open and verify the expected notification and marker update appear. | Backend event delivery test passes and the map subscribes/refreshes in source; the full report-to-open-map flow is **not verified end-to-end**. |
@@ -124,6 +128,24 @@ For the remaining API and database scenarios, we plan to run the backend with a 
 | FR-11 | Call protected operations without a token, with an invalid token, and with a valid token for a user lacking permission; verify unauthorized requests are rejected. | Missing, invalid, expired, and wrongly signed tokens, deactivated users, role checks, and ownership checks pass automated tests. Admin and detection write protection were also confirmed with live requests (section 3.2). |
 
 Next, run API integration tests against a temporary PostGIS database, then exercise browser flows with camera/location permissions and a controlled detection-service stub. Record dates, environment, inputs, expected/actual results, and defects for each run.
+
+### 3.3 Detection model training and evaluation
+
+**Implementation:** The Python scripts in `training/` build the detection model offline. They download Roboflow datasets, merge them into one dataset with duplicate images removed across splits and polygon labels converted to boxes, fine-tune YOLO11n, evaluate a local or hosted model with the backend's preprocessing and 0.6 threshold at box and picture level, run a model on selected pictures, and upload trained weights to Roboflow. All settings are read from `training/.env`.
+
+**Test environment:** Python 3.12.7 with Ultralytics 8.4.208, PyTorch 2.15.0 (CPU build), and Roboflow 1.7.3 on Windows 11, without a GPU.
+
+| Check | Expected result | Actual result and evidence | Status |
+| --- | --- | --- | --- |
+| Static checks | No problems reported. | pyflakes and pycodestyle (120-character lines) reported no problems for every script. | Passed. |
+| Dataset download | Downloaded datasets are skipped; invalid settings stop with a message. | Both downloaded datasets were skipped. Missing settings, a non-numeric version, an unsafe folder name, and command-line arguments each stopped with a message. A fresh download was not run; a workspace request with the current API key returned 404. | Passed for covered cases; download not verified. |
+| Dataset preparation | The two datasets merge into one YOLO dataset; invalid settings stop with a message. | `datasets/combined` was built with 7,848 training, 2,635 validation, and 1,327 test images and 29,209 boxes. An existing output folder, an unknown source, and an unsafe output name each stopped with a message. | Passed. |
+| Training | A short run finishes and saves weights; invalid settings are rejected before training. | A 1-epoch CPU run on 1% of the training images at image size 320 finished and wrote `best.pt`. Invalid epoch, image size, and device values were reported together, and the script exited with code 2. | Passed; a full training run was not done. |
+| Evaluation | AP50, box-level and picture-level tables, and a JSON summary are produced. | With a simulated predictor on 160 validation images, including simulated request failures, the script produced AP50, both tables with 0.6 marked, a failure count, and the JSON summary. A missing model and an invalid split or limit each stopped with a message. | Passed for the metric code; no trained or hosted model evaluated. |
+| Prediction | Each picture gets a result and a saved copy. | With the pretrained `yolo11n.pt`, which is not trained on potholes, 3 test pictures each printed a result and were saved to `runs/predict`. A missing model stopped with a message. | Passed; pothole predictions not verified. |
+| Upload | The model type is read from the training run; invalid settings stop before uploading. | Runs trained from yolo11n, yolov8s, and yolo26m gave `yolov11n`, `yolov8s`, and `yolo26m`. Missing Roboflow settings, missing weights, and a non-numeric version each stopped before any upload. | Passed for covered cases; upload not verified. |
+
+**Not verified:** A full GPU training run and the accuracy of a trained model, a fresh dataset download, evaluation of the hosted Roboflow model, uploading weights, and the backend calling a trained model. The training code has no automated unit tests.
 
 ## 4. Execution-based non-functional testing
 
@@ -158,6 +180,7 @@ This report includes a source walkthrough of the route registrations, controller
 5. **UI/API error contract:** Auth pages read failure messages through a helper that handles the API's `{ message }` and `{ error }` response shapes (section 3.2).
 6. **Profile statistics:** The profile shows pothole and detection counts from stored rows. The profile avatar button has no action handler; it should not be presented as an available avatar-upload feature.
 7. **Schema lifecycle:** Compose mounts `schema.sql` as an initialization script. Existing database volumes must apply the scripts in `backend/db/migrations/` in numeric order for the review and detection-owner changes.
+8. **Copied detection settings:** The training scripts repeat the backend's 640×480 resize, JPEG quality 75, and 0.6 reporting threshold so that evaluation matches deployed behavior. These values are not shared with the backend, so a change in one place requires the same change in the other.
 
 **Next verification gate:** prepare known PostGIS records near the displayed map location and verify populated, empty, malformed, and failed list responses in the browser. Check markers/details/images against those records, exercise retry, and run the complete camera-to-detection-to-report-to-map flow. Also review public links, keyboard/focus behavior, mobile layouts, and visual consistency; record measured outcomes rather than inferring them from source inspection.
 
