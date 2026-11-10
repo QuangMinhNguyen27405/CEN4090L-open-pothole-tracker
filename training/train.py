@@ -1,19 +1,3 @@
-"""Fine-tune a YOLO model to detect potholes.
-
-Every setting comes from a TRAIN_* environment variable, usually set in
-training/.env (see .env.example for the full list). Variables already set in
-the shell take precedence over the file, so one run can be changed without
-editing it:
-
-    python train.py
-    TRAIN_EPOCHS=1 TRAIN_FRACTION=0.05 python train.py    # quick smoke test (bash)
-
-Relative paths are resolved against this folder, so the script behaves the
-same no matter where it is started from.
-
-Exit codes: 0 success, 1 training failed, 2 invalid configuration, 130 interrupted.
-"""
-
 import os
 import re
 import sys
@@ -45,7 +29,6 @@ DEFAULTS = {
 TRUE_VALUES = ["1", "true", "yes", "on"]
 FALSE_VALUES = ["0", "false", "no", "off"]
 
-EXIT_OK = 0
 EXIT_FAILED = 1
 EXIT_CONFIG = 2
 EXIT_INTERRUPTED = 130
@@ -208,11 +191,8 @@ def train(config, device):
 
 
 def main():
-    args = sys.argv[1:]
-    if args:
-        print(__doc__)
-        if args in [["-h"], ["--help"]]:
-            sys.exit(EXIT_OK)
+    if len(sys.argv) > 1:
+        print("train.py doesn't take arguments anymore, put the settings in training/.env", file=sys.stderr)
         sys.exit(EXIT_CONFIG)
 
     load_dotenv(ENV_FILE)
