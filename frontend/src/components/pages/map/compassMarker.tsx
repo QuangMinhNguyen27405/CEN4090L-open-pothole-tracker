@@ -8,7 +8,7 @@ const CompassMarker = ({
   heading: number;
 }) => {
   return (
-    <AdvancedMarker position={position}>
+    <AdvancedMarker position={position} zIndex={0}>
       <img
         src="/location-arrow.png"
         alt="User Direction"
