@@ -323,7 +323,7 @@ sequenceDiagram
   loop While driving, with location available
     Browser->>API: GET nearby (radiusMeters=200, limit=100)
     API-->>Browser: Nearby reports or error
-    Browser->>Browser: Filter by distance/heading; warn or show unavailable status
+    Browser->>Browser: Filter by distance/heading, then warn or show unavailable status
   end
   User->>Browser: Stop driving
   Browser->>Browser: Cancel polling, dismiss warning, restore map tilt
