@@ -171,7 +171,7 @@ flowchart LR
 - **Trigger and preconditions:** Receive a nonempty supported JPEG/PNG, bounded coordinates, timestamp, and optional accuracy; Roboflow configuration is available.
 - **Main flow:** (1) Validate input. (2) Preprocess the image and call Roboflow. (3) Validate predictions. (4) Select the highest-confidence pothole prediction meeting the current 0.6 threshold. (5) Return the outcome to UC-1 for persistence or a no-detection result.
 - **Alternatives and errors:** Missing configuration returns 503; inference failure returns 502; invalid inputs are rejected. A valid result without a qualifying prediction returns `detected: false` and does not create a report. Confidence and duplicate policies still require team evaluation.
-- **Postconditions and status:** Analysis provides an accepted candidate, no candidate, or a distinguishable error. Mocked backend tests cover qualifying/nonqualifying results and invalid coordinates. Live model accuracy, lighting/road variation, and credentials are owned by the detection team and remain pending.
+- **Postconditions and status:** Analysis provides an accepted candidate, no candidate, or a distinguishable error. Mocked backend tests cover qualifying/nonqualifying results and invalid coordinates. The model training pipeline (section 5) measures a model offline with the same preprocessing and 0.6 threshold. The accuracy of a trained model, lighting/road variation, and live credentials remain pending.
 
 **UC-10 Plan a route and use driving mode**
 
@@ -235,6 +235,7 @@ flowchart LR
   API --> Detection[Pothole detection integration]
   API --> Reports[Pothole reports and confirmations]
   Detection --> Model[Roboflow detection service]
+  Training[Model training pipeline] -->|uploads trained weights| Model
   Auth --> Firebase[Firebase Authentication]
   Reports --> DB[(PostgreSQL and PostGIS)]
   Detection --> DB
@@ -389,6 +390,20 @@ sequenceDiagram
 | `potholeToast.tsx`, `geoUtils.ts` | Display nearby warnings and calculate distance/bearing for warning candidates. |
 | `use-dialog-focus.ts` | Manage focus trapping, Escape dismissal, and focus restoration for report and photo dialogs. |
 
+### Model training pipeline
+
+The detection model is built offline by Python scripts in `training/`, run in the order below. The application does not run these scripts; the backend calls the hosted Roboflow model after trained weights are uploaded.
+
+| Component | Responsibility |
+| --- | --- |
+| `download_dataset.py` | Download a Roboflow Universe dataset in YOLO format into `training/datasets/`. |
+| `prepare_dataset.py` | Merge the downloaded datasets into `datasets/combined`, remove duplicate images (keeping the test, then validation, then training copy), and convert polygon labels to boxes. |
+| `train.py` | Fine-tune a pretrained YOLO11n model and save the best weights. |
+| `evaluate.py` | Measure a local or hosted model with the backend's image preprocessing and 0.6 reporting threshold, at box and picture level. |
+| `predict.py` | Run a model on selected pictures and save copies with the predicted boxes. |
+| `deploy_roboflow.py` | Upload trained weights to the Roboflow project version that the backend calls. |
+| `utils.py` and `training/.env` | Share settings, label parsing, and backend-style preprocessing; hold the settings for every script. |
+
 ## 6. Operating environment
 
 - **Hardware platform:** The backend is intended to run on a general-purpose server or development machine; no minimum CPU, memory, or storage requirements have been established. Users will access the system from desktop or mobile devices. Detection requires a camera and location capability.
@@ -396,6 +411,7 @@ sequenceDiagram
 - **Backend software:** The API uses Node.js 24 or later with Express 5 and TypeScript. It reads `PORT`, `DATABASE_URL`, and `JWT_SECRET` from environment variables.
 - **Database software:** Docker Compose runs PostgreSQL 17 with PostGIS 3.5. On a fresh database, it loads the schema from `backend/db/schema.sql`.
 - **Client software:** The intended client is a modern desktop or mobile web browser. Specific supported browsers and versions still need to be decided. The React 19/TypeScript frontend includes Vite 7 and Tailwind CSS 4. Google Maps requires `VITE_GOOGLE_MAPS_API_KEY` and `VITE_GOOGLE_MAPS_ID`. With `VITE_API_URL` blank, the development proxy forwards `/api` to `http://localhost:8000`; deployment requires equivalent routing or a configured API origin.
+- **Model training software:** The scripts in `training/` use Python 3.12 with Ultralytics YOLO, PyTorch, and the Roboflow package, listed in `training/requirements.txt`. They read their settings, including `ROBOFLOW_API_KEY`, from `training/.env`. A CUDA GPU is recommended for full training; CPU training works but is slow.
 - **Other components:** Google login depends on Firebase Authentication and Firebase Admin, including valid project/service-account configuration. The backend also requires access to the PostgreSQL database. These components must be available and correctly configured for the corresponding features to work.
 
 ## 7. Assumptions and dependencies
@@ -410,4 +426,7 @@ sequenceDiagram
 - The confirmation-summary read contract is implemented, including the viewer response. Final integrated UI verification is deferred; confirmation writes do not broadcast updated totals to other open detail views.
 - Address search, geocoding, and directions depend on Google service availability and project configuration. Route guidance and warnings depend on GPS accuracy and available reports; the application cannot guarantee that every road hazard is recorded or warned about.
 - Live inference testing depends on valid Roboflow configuration and evaluation of the model thresholds. Credentials must remain outside version control.
+- The detection model is trained on two public Roboflow Universe pothole datasets, `pothole-jujbl` (CC BY 4.0) and `new-pothole-detection` (Public Domain), merged into one `Pothole` class. Accuracy on the application's own phone captures may differ from accuracy on these datasets.
+- The backend uses the hosted Roboflow model, so a trained model takes effect only after its weights are uploaded and `ROBOFLOW_PROJECT_ID` and `ROBOFLOW_MODEL_VERSION` point to that version.
+- Model evaluation copies the backend's image preprocessing (640×480, JPEG quality 75) and 0.6 reporting threshold. If the backend changes these values, the training scripts must be updated to match.
 - NFR numeric targets, supported device versions, and exact visual comparisons remain to be confirmed; browser test viewports are not evidence of real-device performance or pixel parity.
