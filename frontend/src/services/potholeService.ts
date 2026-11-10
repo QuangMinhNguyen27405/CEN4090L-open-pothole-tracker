@@ -31,6 +31,12 @@ export type ViewerConfirmationSummary = z.infer<typeof ViewerConfirmationSummary
 const DetectionReportSchema = z.object({ detected: z.boolean() });
 
 export const potholeService = {
+  async getNearby(point: { lat: number; lng: number }, signal?: AbortSignal): Promise<Pothole[]> {
+    const response = await axios.get(`${import.meta.env.VITE_API_URL || ""}/api/potholes/nearby`, {
+      params: { latitude: point.lat, longitude: point.lng, radiusMeters: 200, limit: 100 }, signal, timeout: 10000,
+    });
+    return z.array(PotholeSchema).parse(response.data);
+  },
   async getPotholes(signal?: AbortSignal): Promise<Pothole[]> {
     const response = await axios.get(
       `${import.meta.env.VITE_API_URL || ""}/api/potholes`,
@@ -69,7 +75,7 @@ export const potholeService = {
     lng: number;
     capturedAt: string;
     gpsAccuracy: number;
-  }): Promise<{ detected: boolean }> {
+  }, signal?: AbortSignal): Promise<{ detected: boolean }> {
     const params = new URLSearchParams({
       lat: String(frame.lat),
       lng: String(frame.lng),
@@ -83,6 +89,7 @@ export const potholeService = {
         headers: { "Content-Type": frame.image.type },
         withCredentials: true,
         timeout: 30000,
+        signal,
       },
     );
     return DetectionReportSchema.parse(response.data);

@@ -39,7 +39,7 @@ export default function HomePage() {
     {
       title: "GEICO Claims",
       description: "File a pothole damage claim with GEICO insurance",
-      url: "https://claims.geico.com/ClaimsExpress/Locate",
+      url: "https://www.geico.com/claims/",
       icon: Shield,
       category: "Insurance",
     },
@@ -114,13 +114,13 @@ export default function HomePage() {
                   </CardHeader>
                   <CardContent>
                     <Button
+                      asChild
                       variant="outline"
-                      className="w-full"
-                      onClick={() =>
-                        window.open(link.url, "_blank", "noopener,noreferrer")
-                      }>
+                      className="w-full">
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${link.title} (opens in a new tab)`}>
                       Visit Site
                       <ExternalLink className="w-4 h-4 ml-2" />
+                      </a>
                     </Button>
                   </CardContent>
                 </Card>

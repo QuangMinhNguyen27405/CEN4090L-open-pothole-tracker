@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
+import { useDialogFocus } from '@/hooks/use-dialog-focus';
 
 interface ImageViewerProps {
   images: string[];
@@ -15,19 +17,18 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   initialIndex = 0
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, isOpen && images.length > 0, onClose);
 
   useEffect(() => {
-    setCurrentIndex(initialIndex);
-  }, [initialIndex]);
+    if (isOpen) setCurrentIndex(Math.max(0, Math.min(initialIndex, images.length - 1)));
+  }, [initialIndex, isOpen, images.length]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
 
       switch (e.key) {
-        case 'Escape':
-          onClose();
-          break;
         case 'ArrowLeft':
           setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
           break;
@@ -37,14 +38,15 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
       }
     };
 
-    if (isOpen) {
+    const previousOverflow = document.body.style.overflow;
+    if (isOpen && images.length > 0) {
       document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
     }
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'unset';
+      if (isOpen && images.length > 0) document.body.style.overflow = previousOverflow;
     };
   }, [isOpen, images.length, onClose]);
 
@@ -58,13 +60,14 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
   };
 
-  return (
-    <div className="fixed inset-0 z-[10000] bg-black bg-opacity-90 flex items-center justify-center">
+  return createPortal(
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Pothole photos" tabIndex={-1} onClick={(event) => event.stopPropagation()} className="fixed inset-0 z-[10000] bg-black bg-opacity-90 flex items-center justify-center">
       {/* Close button */}
       <Button
         variant="ghost"
         size="sm"
         onClick={onClose}
+        aria-label="Close photo viewer"
         className="absolute top-4 right-4 z-10 text-white hover:bg-white/20"
       >
         ✕
@@ -77,6 +80,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
             variant="ghost"
             size="sm"
             onClick={goToPrevious}
+            aria-label="Previous photo"
             className="absolute left-4 z-10 text-white hover:bg-white/20"
           >
             ←
@@ -85,6 +89,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
             variant="ghost"
             size="sm"
             onClick={goToNext}
+            aria-label="Next photo"
             className="absolute right-4 z-10 text-white hover:bg-white/20"
           >
             →
@@ -100,7 +105,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
           className="max-w-full max-h-full object-contain"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = '/placeholder-image.jpg';
+            target.src = '/image-unavailable.svg';
           }}
         />
       </div>
@@ -119,6 +124,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
             <button
               key={index}
               onClick={() => setCurrentIndex(index)}
+              aria-label={`View photo ${index + 1}`}
+              aria-pressed={index === currentIndex}
               className={`flex-shrink-0 w-12 h-12 rounded border-2 overflow-hidden ${
                 index === currentIndex ? 'border-white' : 'border-gray-500'
               }`}
@@ -129,7 +136,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder-image.jpg';
+                  target.src = '/image-unavailable.svg';
                 }}
               />
             </button>
@@ -142,7 +149,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         className="absolute inset-0 -z-10"
         onClick={onClose}
       />
-    </div>
+    </div>,
+    document.body,
   );
 };
 

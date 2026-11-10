@@ -2,11 +2,11 @@
 
 **Project:** Open Pothole Tracker
 
-**Version:** 2.0
+**Version:** 2.2
 
 **Authors:** Linh Nguyen, Thien Le, Vinh Do, Hoang Vu, Quang Minh Nguyen
 
-**Repository inspected:** 2026-11-09, through commit `a064a11`, plus the Increment 2 camera/GPS changes recorded below.
+**Scope:** Current system implementation and verification status.
 
 > This report distinguishes source implementation, executed test results, member-reported browser checks, and planned verification. Planned tests are not presented as passed tests.
 
@@ -39,7 +39,19 @@ The frontend uses HTML in `frontend/index.html` for the page shell and CSS/Tailw
 
 For local development, the Vite proxy forwards `/api` requests to `http://localhost:8000`; deployments must provide equivalent routing or configure an API origin. Google Maps, Firebase, Roboflow, and database access require their corresponding configuration and credentials.
 
+The report workflow combines camera/GPS capture, API validation, image analysis, PostGIS persistence, and event delivery. After a stored report changes, the event stream tells open maps to reload; the interface announces an update only after the reload succeeds. Disconnected streams expose a manual refresh option and trigger a new snapshot after reconnection. Discarded or replaced captures ignore late responses, and closing capture releases camera resources. Confirmations use authenticated API requests and update the existing user/report response.
+
+The shared interface uses keyboard-operable markers, dialogs with focus restoration, viewport-constrained details, photo fallbacks, and stacked status panels on narrow screens. Details and photos render outside the map's stacking context so notifications cannot cover their controls. Custom marker content explicitly accepts pointer events, while report markers appear above the location indicator. Public resources use descriptive external links with the existing card styling.
+
+The Directions drawer accepts an origin and destination, including the current location as an origin. Google services provide address suggestions, coordinates, and route alternatives. Selecting a route changes its highlighting; Start Driving becomes available after a route loads. Driving follows device location at zoom 17 with a tilted map. Stop Driving ends warning polling and restores normal tilt. Editing an address clears stale routes and stops driving; failed route requests offer retry. The existing camera capture and analysis workflow remains separate from route planning.
+
+Driving warnings query `GET /api/potholes/nearby` with `latitude`, `longitude`, `radiusMeters=200`, and `limit=100`, rather than relying on the latest 100 records displayed on the map. Queries run sequentially, with the next scheduled three seconds after completion. The client filters candidates by current distance and available GPS travel heading or compass heading. It displays the closest qualifying warning for up to six seconds, with a nine-second interval between repeats for the same report. Missing location and API failures produce status messages; a fallback map center does not count as a device position. These settings have not been validated as real-world warning-performance guarantees.
+
+Pothole details read public aggregate counts and the signed-in viewer's previous response. The interface provides loading/retry states, cancels pending reads before voting, and preserves one response per account/report. Detection writes require sign-in; image attachment enforces owner/admin access.
+
 ## 3. Execution-based functional testing
+
+**Current verification status:** Recorded results below apply to their documented revisions and environments, not automatically to the current integrated implementation. Navigation, warning behavior, live-refresh recovery, and the combined details interface require verification. The last navigation browser run encountered address-label lookup failures; the source correction has not been rerun. Existing camera/detection fixtures require alignment with the current authenticated submission and explicit Start camera workflow. No new tests were run when preparing this revision.
 
 **Recorded evidence on 2026-11-09:** Using Node 24.18.0 and npm 11.16.0, the backend test suite passed all 8 tests: detection/report persistence with a mocked detector/database, nearby-query validation and parameter handling, and event-stream delivery. The frontend TypeScript check and production build also passed. The build reported third-party annotation and large-chunk warnings. These results verify the covered automated checks; they do not establish full browser, live-service, or live-database behavior.
 
@@ -48,26 +60,26 @@ The browser checks recorded on 2026-10-05 are historical: a team member reported
 | Check | Expected result | Actual result and evidence | Status |
 | --- | --- | --- | --- |
 | Backend automated tests | Covered API/model cases pass. | `npm test` passed 8/8 tests: 3 detection/report tests, 4 nearby-pothole tests, and 1 event-stream test. Detector and database behavior are mocked in these tests. | Passed for covered cases; not a live PostGIS or Roboflow integration test. |
-| Frontend build and TypeScript | Type checking and production bundling succeed. | The earlier `npm run build` passed with Node 24.18.0. After the Increment 2 capture change, TypeScript (`tsc -b`) and Vite production build passed with Node 24.22.2. The build emitted third-party annotation and large-chunk warnings. | Passed with warnings; browser behavior not verified. |
-| Frontend lint | No lint errors. | After the Increment 2 capture change, ESLint exited 0 with two existing hook-dependency warnings in `loginPage.tsx`. | Passed with warnings. |
+| Frontend build and TypeScript | Type checking and production bundling succeed. | The earlier `npm run build` passed with Node 24.18.0. For the recorded capture revision, TypeScript (`tsc -b`) and Vite production build passed with Node 24.22.2. The build emitted third-party annotation and large-chunk warnings. | Passed with warnings; browser behavior not verified. |
+| Frontend lint | No lint errors. | For the recorded capture revision, ESLint exited 0 with two existing hook-dependency warnings in `loginPage.tsx`. | Passed with warnings. |
 | Public page/map display | Home/navigation/themes and configured map display work. | A team member reported the basic page/map check working on 2026-10-05; browser/device versions were not recorded. | Historical member-reported smoke check; current browser behavior not verified. |
 | `GET /api/health` | API reaches its database and returns `{ "status": "ok" }`. | A team member reported the expected response on 2026-10-05. | Historical connectivity check; not rerun. |
 | `GET /api/auth/me`, logged out | HTTP 401 for no authenticated session. | HTTP 401 shown in the 2026-10-05 browser-console evidence. | Historical expected response; account flows not verified. |
 | `GET /api/potholes?limit=100` and map data | The client receives records matching the map's expected schema. | The 2026-10-05 HTTP 404 predates the current list route. Current source inspection shows the frontend request and backend `{ data: [...] }` response contract align; no current browser request with populated data is recorded. | Source contract appears aligned; data-backed map rendering not verified. |
 | Nearby lookup | Valid/invalid query behavior and spatial results are correct. | Four automated tests passed as part of the 2026-11-09 backend suite; query parameters are checked, but database calls are mocked. | Automated validation passed; live PostGIS behavior not verified. |
-| Camera/report flow and live map updates | A capture is analyzed, stored when applicable, and reflected on an open map. | Capture/report submission, SSE subscription, and report refresh are present in source. The Increment 2 capture UI adds an explicit camera start, purpose text, permission/error states, and stream cleanup. The event-stream delivery test passes; full browser-to-database flow was not run. | Implemented; end-to-end behavior not verified. |
+| Camera/report flow and live map updates | A capture is analyzed, stored when applicable, and reflected on an open map. | Capture/report submission, SSE subscription, and report refresh are present in source. The capture UI includes an explicit camera start, purpose text, permission/error states, and stream cleanup. The event-stream delivery test passes; full browser-to-database flow was not run. | Implemented; end-to-end behavior not verified. |
 
 Implemented features still require execution-based tests; implementation alone is not counted as evidence that a functional requirement passes.
 
-### 3.1 Increment 2 — camera and GPS capture (Vinh Do)
+### 3.1 Camera and GPS capture
 
-**Implemented on 2026-11-09:** The existing map capture component now explains why camera and location access are requested before starting the camera. It waits for **Start camera** before calling `getUserMedia`, captures one JPEG scaled to at most 1600 pixels on its longest side, rejects files above the API's 5 MB limit or invalid GPS readings, requests a fresh GPS position, and passes the image, coordinates, capture time, and GPS accuracy to the existing map preview and `POST /api/detections/report` submission flow. It distinguishes camera denial/unavailability and location denial/unavailability/timeout, offers camera retry, uses the shared Radix modal for keyboard focus and Escape handling, stops media tracks on close/unmount, and ignores late camera/GPS results after the dialog closes. The frontend source was checked with TypeScript, ESLint, and a production build using Node 24.22.2; all three completed, with the warnings recorded above. These checks do not exercise browser permissions or the backend; backend tests were not rerun for this frontend change.
+**Implementation:** The map capture component explains why camera and location access are requested before starting the camera. It waits for **Start camera** before calling `getUserMedia`, captures one JPEG scaled to at most 1600 pixels on its longest side, rejects files above the API's 5 MB limit or invalid GPS readings, requests a fresh GPS position, and passes the image, coordinates, capture time, and GPS accuracy to the existing map preview and `POST /api/detections/report` submission flow. It distinguishes camera denial/unavailability and location denial/unavailability/timeout, offers camera retry, uses the shared Radix modal for keyboard focus and Escape handling, stops media tracks on close/unmount, and ignores late camera/GPS results after the dialog closes. The frontend source was checked with TypeScript, ESLint, and a production build using Node 24.22.2; all three completed, with the warnings recorded above. These checks do not exercise browser permissions or the backend; backend tests were not rerun for this frontend change.
 
 | Remaining test | Expected evidence |
 | --- | --- |
 | Browser permissions and lifecycle | On a real mobile browser and a desktop browser, verify allowed, denied, unavailable, and timeout cases; camera retry; Escape/close while camera or GPS is pending; and that the camera indicator turns off on close. Record browser/device versions and screenshots or observations. |
 | Capture-to-API flow | With a controlled detector and test database, capture a road image, inspect JPEG dimensions and size plus request `lat`, `lng`, `capturedAt`, and `gpsAccuracy`, then verify detected/no-detection/error responses, saved image/report state, and map refresh. Confirm **Discard** sends no request. |
-| Geospatial follow-up from Increment 1 | With known PostGIS points, verify nearby boundary inclusion, meter distances, nearest-first ordering, empty results, and the 10-meter duplicate match against actual rows; inspect the spatial index plan with representative data. The four existing nearby tests use mocks. |
+| Geospatial queries and duplicate matching | With known PostGIS points, verify nearby boundary inclusion, meter distances, nearest-first ordering, empty results, and the 10-meter duplicate match against actual rows; inspect the spatial index plan with representative data. The four existing nearby tests use mocks. |
 | Accessibility and compatibility | Check focus return and keyboard operation of the modal/preview, screen-reader announcements, mobile layout, and browser support for camera and geolocation. |
 
 **Concerns to resolve:** The GPS reading is requested after the image is captured, so movement or an inaccurate reading may place a report at the wrong point; no maximum GPS-accuracy threshold is defined. Detection write routes require a signed-in user (section 3.2). Camera/geolocation APIs and the map depend on browser permissions and deployment configuration, so a successful build is not evidence of device support or a complete end-to-end flow.
@@ -108,6 +120,7 @@ For the remaining API and database scenarios, we plan to run the backend with a 
 | FR-08 | Submit a report while the map is open and verify the expected notification and marker update appear. | Backend event delivery test passes and the map subscribes/refreshes in source; the full report-to-open-map flow is **not verified end-to-end**. |
 | FR-09 | Confirm a report as a user, submit a repeat confirmation, and verify the saved confirmation and community feedback. | Viewing counts, viewing and changing the user's own answer, and persistence after reload were verified with a stubbed map library (section 3.2). Rendering on live Google Maps is **not verified**. |
 | FR-10 | Sign in as an admin, review a report, approve/reject it, and verify the saved status; repeat as a non-admin and expect denial. | Admin and non-admin behavior, saved decisions, and the dashboard workflow passed automated, live API, and browser checks (section 3.2). |
+| FR-12 | Search/select addresses, switch routes, start/stop driving, and verify map following and nearby warnings, including missing GPS and service failures. | Implemented; verification of the current integrated workflow remains pending. |
 | FR-11 | Call protected operations without a token, with an invalid token, and with a valid token for a user lacking permission; verify unauthorized requests are rejected. | Missing, invalid, expired, and wrongly signed tokens, deactivated users, role checks, and ownership checks pass automated tests. Admin and detection write protection were also confirmed with live requests (section 3.2). |
 
 Next, run API integration tests against a temporary PostGIS database, then exercise browser flows with camera/location permissions and a controlled detection-service stub. Record dates, environment, inputs, expected/actual results, and defects for each run.
@@ -148,7 +161,7 @@ This report includes a source walkthrough of the route registrations, controller
 
 **Next verification gate:** prepare known PostGIS records near the displayed map location and verify populated, empty, malformed, and failed list responses in the browser. Check markers/details/images against those records, exercise retry, and run the complete camera-to-detection-to-report-to-map flow. Also review public links, keyboard/focus behavior, mobile layouts, and visual consistency; record measured outcomes rather than inferring them from source inspection.
 
-### 5.1 Frontend checks still to run
+### 5.1 Integrated workflow checks still to run
 
 - Compare returned pothole IDs, coordinates, dates, confidence, verification state, counts, and photos with the rendered markers/details.
 - Confirm that an empty data array gives no pothole markers and announces empty status; malformed payloads and failed requests must remain distinguishable from that result.
@@ -156,6 +169,6 @@ This report includes a source walkthrough of the route registrations, controller
 - Exercise location permission allowed/denied/unavailable cases and missing/invalid Maps configuration.
 - Exercise camera permission, image capture, GPS association, report submission, and the resulting map update in a browser.
 - Verify navigation and popups at 390px and 1440px widths and on a real mobile browser; record browser/device versions.
-- Verify Tab and Enter/Space marker activation, popup/image-viewer dismissal, focus return, and screen-reader status. Full popup keyboard/focus handling remains a follow-up.
+- Verify Tab and Enter/Space marker activation, popup/image-viewer dismissal, focus return, and screen-reader status. Popup keyboard/focus handling is implemented; integrated verification remains pending.
 - Check each external claim-resource destination.
 - Compare the agreed UI using matched theme, map configuration, location, data, and viewport.
