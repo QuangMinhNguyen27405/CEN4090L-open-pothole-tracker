@@ -22,14 +22,14 @@ Each requirement describes a user-visible capability at a high level. The lead a
 | FR-04 | High | Users shall be able to capture road footage with their device camera and share their location for detection. | Camera, GPS, and geospatial — Vinh Do | Frontend — Thien Le |
 | FR-05 | High | The system shall analyze submitted camera data for potholes and return detection results. | AI detection — Quang Minh Nguyen | Camera/GPS — Vinh Do; backend API — Linh Nguyen |
 | FR-06 | High | The system shall store and retrieve pothole reports with their location, detection information, and images. | Backend, database, and APIs — Linh Nguyen | AI detection — Quang Minh Nguyen; geospatial — Vinh Do |
-| FR-09 | High | Users shall be able to confirm whether a pothole is still present and view community feedback. | Crowdsourcing — Linh Nguyen | Frontend — Thien Le |
+| FR-09 | High | Users shall be able to confirm whether a pothole is still present and view community feedback. | Crowdsourcing — Linh Nguyen | Frontend — Thien Le; community feedback display (Hoang Vu) |
 | FR-10 | High | Administrators shall be able to review reports, images, and confirmations in a dashboard and verify, reject, or manage reports. | Administration — Hoang Vu | Backend/API — Linh Nguyen; frontend — Thien Le |
 | FR-11 | High | The system shall restrict account, confirmation, and administrative actions according to user identity and role. | Authentication and authorization — Hoang Vu | Backend API — Linh Nguyen |
 | FR-07 | Medium | The system shall support nearby-pothole lookup and handling of duplicate reports. | Geospatial — Vinh Do | Backend/database — Linh Nguyen |
 | FR-08 | Medium | Users shall receive real-time detection notifications and see newly reported potholes on the map. | Real-time backend — Linh Nguyen | Frontend and map — Thien Le |
 | FR-03 | Low | Visitors shall be able to find insurance and transportation-agency resources for pothole claims. | Public frontend — Thien Le | — |
 
-Detection creation currently uses a 10-meter matching radius. Detection thresholds, validation of this duplicate policy, and report-review policy still need team agreement.
+Detection creation currently uses a 10-meter matching radius. Detection thresholds and validation of this duplicate policy still need team agreement. The report-review policy is described in UC-4.
 
 ## 3. Non-functional requirements
 
@@ -70,9 +70,9 @@ flowchart LR
 
 **UC-2, view map:** A visitor or signed-in user opens `/map` without being required to log in. The frontend requests location access, centers the map on the available location (with a fallback if unavailable), and requests public potholes. Selecting a marker opens read-only location, detection date, confidence, detection count, verification status, and available photos. A failed data request shows an error and Retry; a successful empty response leaves no pothole markers and announces empty status to assistive technology.
 
-**UC-3, confirm report:** A signed-in user opens a report, chooses “still there” or “not there,” and submits. The system records one response for that user/report and updates the summary. A repeated submission by the same user updates their response.
+**UC-3, confirm report:** Anyone who opens a report sees the community counts. A signed-in user also sees their earlier answer, chooses “still there” or “not there,” and submits. The system records one response for that user/report and updates the summary. A repeated submission by the same user updates their response.
 
-**UC-4, review report:** An administrator opens pending reports, examines evidence and confirmations, and records a verification or rejection decision. Other users cannot perform the action. Rejected-report visibility and audit history need design decisions.
+**UC-4, review report:** An administrator opens the review queue, filters it by pending, verified, or rejected, examines a report's location, photos, detection history, and community confirmations, and records a verification or rejection decision. Other users cannot perform the action. The system stores the latest reviewer and review time; a full history of earlier decisions is not kept. A rejected report is removed from the public map, detail, nearby, and along-route views and remains available to administrators. A new detection within the matching radius returns it to pending and clears the earlier review, so that a mistaken rejection cannot permanently hide a real pothole.
 
 **UC-5, find claim resources:** A visitor opens `/`, views the public claim-resource cards, and selects a link to open an agency or insurer website in another tab. An account is not required. The application provides links, not claim submission or a guarantee of reimbursement; each provider determines eligibility.
 
@@ -82,7 +82,7 @@ flowchart LR
 
 ## 5. Design and interaction diagrams
 
-The repository uses TypeScript modules and object-style models rather than a complete class hierarchy. This conceptual domain diagram shows data and intended operations. `deactivate`, `create`, and `summarize` correspond to existing model methods; `updateProfile`, `findInArea`, and `review` are proposed operations.
+The repository uses TypeScript modules and object-style models rather than a complete class hierarchy. This conceptual domain diagram shows data and intended operations. `deactivate`, `create`, and `summarize` correspond to existing model methods, and `review` corresponds to `PotholeReviewModel.recordDecision`; `updateProfile` and `findInArea` are conceptual names for the existing profile update and map queries.
 
 ```mermaid
 classDiagram
@@ -101,6 +101,9 @@ classDiagram
     +float confidence
     +int detectionCount
     +bool verified
+    +ReviewStatus reviewStatus
+    +int reviewedBy
+    +Date reviewedAt
     +string[] imageUrls
     +create()
     +findInArea()
@@ -191,6 +194,29 @@ sequenceDiagram
   Browser-->>User: Show result
 ```
 
+### Sequence diagram: review report
+
+```mermaid
+sequenceDiagram
+  actor Admin as Administrator
+  participant Browser
+  participant API
+  participant DB
+  participant Map as Open maps
+  Admin->>Browser: Open review queue
+  Browser->>API: Request reports by status with session
+  API->>API: Check authentication and admin role
+  API->>DB: Read reports and confirmation counts
+  DB-->>API: Review queue
+  API-->>Browser: Reports
+  Admin->>Browser: Verify or reject a report
+  Browser->>API: Submit decision
+  API->>DB: Save status, reviewer, and time
+  DB-->>API: Updated report
+  API-->>Map: Pothole update event
+  API-->>Browser: Updated report
+```
+
 ### Frontend component overview
 
 | Component | Responsibility |
@@ -200,7 +226,8 @@ sequenceDiagram
 | `homePage.tsx` | Display public transportation-agency and insurer resource cards. |
 | `mapPage.tsx`, `authHook.ts`, `compassMarker.tsx` | Request browser location/orientation, render Google Maps and the location arrow, and manage pothole requests and status. |
 | `services/potholeService.ts` | Fetch pothole data, validate its shape, and normalize identifiers. |
-| `potholeMarker.tsx`, `imageViewer.tsx` | Display markers, report details, image thumbnails, and full-screen photo viewing. |
+| `potholeMarker.tsx`, `imageViewer.tsx` | Display markers, report details, community confirmation counts, the user's earlier answer, image thumbnails, and full-screen photo viewing. |
+| `adminPage.tsx`, `services/adminService.ts` | Provide the administrator review queue, report evidence, and verify/reject actions. |
 
 ## 6. Operating environment
 
@@ -216,5 +243,5 @@ sequenceDiagram
 - Camera and geolocation permissions, GPS accuracy, network connectivity, and browser support affect detection quality and availability.
 - Google Maps is the frontend map provider. The backend image-analysis adapter uses Roboflow and requires `ROBOFLOW_API_KEY`, `ROBOFLOW_PROJECT_ID`, and `ROBOFLOW_MODEL_VERSION`.
 - Firebase is required only for the Google login path; email/password login uses the local database.
-- The database architecture uses PostgreSQL/PostGIS. The database must load the SQL schema before the application can use it; the mounted initialization script will not automatically migrate an existing database volume.
+- The database architecture uses PostgreSQL/PostGIS. The database must load the SQL schema before the application can use it; the mounted initialization script will not automatically migrate an existing database volume. Schema changes from the authentication and administration work are provided as reversible scripts in `backend/db/migrations/` and must be applied to existing databases in numeric order.
 - The initial duplicate-detection radius is 10 meters. This assumes detections within that distance may refer to the same pothole; GPS accuracy and road layout may affect whether this threshold is appropriate.
