@@ -41,13 +41,13 @@ For local development, the Vite proxy forwards `/api` requests to `http://localh
 
 ## 3. Execution-based functional testing
 
-**Recorded evidence on 2026-11-09:** Using Node 24.18.0 and npm 11.16.0, the backend test suite passed all 8 tests: detection/report persistence with a mocked detector/database, nearby-query validation and parameter handling, and event-stream delivery. The frontend TypeScript check and production build also passed. The build reported third-party annotation and large-chunk warnings. These results verify the covered automated checks; they do not establish full browser, live-service, or live-database behavior. Section 3.2 records later runs from the same day.
+**Recorded evidence on 2026-11-09:** Using Node 24.18.0 and npm 11.16.0, the backend test suite passed all 8 tests: detection/report persistence with a mocked detector/database, nearby-query validation and parameter handling, and event-stream delivery. The frontend TypeScript check and production build also passed. The build reported third-party annotation and large-chunk warnings. These results verify the covered automated checks; they do not establish full browser, live-service, or live-database behavior.
 
 The browser checks recorded on 2026-10-05 are historical: a team member reported the public page/map and database health check working, and supplied a logged-out HTTP 401 plus a pothole-list HTTP 404 from before the list route was added. Those results are not evidence of current end-to-end behavior.
 
 | Check | Expected result | Actual result and evidence | Status |
 | --- | --- | --- | --- |
-| Backend automated tests | Covered API/model cases pass. | `npm test` passed 8/8 tests: 3 detection/report tests, 4 nearby-pothole tests, and 1 event-stream test. Detector and database behavior are mocked in these tests. Section 3.2 records the later 80/80 run. | Passed for covered cases; not a live PostGIS or Roboflow integration test. |
+| Backend automated tests | Covered API/model cases pass. | `npm test` passed 8/8 tests: 3 detection/report tests, 4 nearby-pothole tests, and 1 event-stream test. Detector and database behavior are mocked in these tests. | Passed for covered cases; not a live PostGIS or Roboflow integration test. |
 | Frontend build and TypeScript | Type checking and production bundling succeed. | The earlier `npm run build` passed with Node 24.18.0. After the Increment 2 capture change, TypeScript (`tsc -b`) and Vite production build passed with Node 24.22.2. The build emitted third-party annotation and large-chunk warnings. | Passed with warnings; browser behavior not verified. |
 | Frontend lint | No lint errors. | After the Increment 2 capture change, ESLint exited 0 with two existing hook-dependency warnings in `loginPage.tsx`. | Passed with warnings. |
 | Public page/map display | Home/navigation/themes and configured map display work. | A team member reported the basic page/map check working on 2026-10-05; browser/device versions were not recorded. | Historical member-reported smoke check; current browser behavior not verified. |
@@ -70,15 +70,15 @@ Implemented features still require execution-based tests; implementation alone i
 | Geospatial follow-up from Increment 1 | With known PostGIS points, verify nearby boundary inclusion, meter distances, nearest-first ordering, empty results, and the 10-meter duplicate match against actual rows; inspect the spatial index plan with representative data. The four existing nearby tests use mocks. |
 | Accessibility and compatibility | Check focus return and keyboard operation of the modal/preview, screen-reader announcements, mobile layout, and browser support for camera and geolocation. |
 
-**Concerns to resolve:** The GPS reading is requested after the image is captured, so movement or an inaccurate reading may place a report at the wrong point; no maximum GPS-accuracy threshold is defined. Detection write routes now require a signed-in user, as described in section 3.2. Camera/geolocation APIs and the map depend on browser permissions and deployment configuration, so a successful build is not evidence of device support or a complete end-to-end flow.
+**Concerns to resolve:** The GPS reading is requested after the image is captured, so movement or an inaccurate reading may place a report at the wrong point; no maximum GPS-accuracy threshold is defined. Detection write routes require a signed-in user (section 3.2). Camera/geolocation APIs and the map depend on browser permissions and deployment configuration, so a successful build is not evidence of device support or a complete end-to-end flow.
 
-### 3.2 Increment 2: authentication, access control, confirmations, and administration (Hoang Vu)
+### 3.2 Authentication, access control, confirmations, and administration
 
-**Environment on 2026-11-09:** Node 25.9.0, a disposable `postgis/postgis:17-3.5` container, the local API, the Vite development server, and headless Google Chrome 153. The project specifies Node 24 or later; these checks were not repeated on Node 24.
+**Test environment:** Node 25.9.0, a disposable `postgis/postgis:17-3.5` container, the local API, the Vite development server, and headless Google Chrome 153. The project specifies Node 24 or later; these checks were not repeated on Node 24.
 
 | Check | Expected result | Actual result and evidence | Status |
 | --- | --- | --- | --- |
-| Backend automated tests and type check | All pass. | `npm test` passed 80/80 and `npm run typecheck` passed at the merge of PR #46. Database and detector calls are mocked in these tests. | Passed for covered cases. |
+| Backend automated tests and type check | All pass. | `npm test` passed 80/80 and `npm run typecheck` passed. Database and detector calls are mocked in these tests. | Passed for covered cases. |
 | Frontend tests, build, and lint | All pass. | `npm test` passed 6/6. `npm run build` passed with existing large-chunk warnings. `npm run lint` reported no errors and two existing hook warnings in `loginPage.tsx`. | Passed with warnings. |
 | Regression check on the access tests | Weakening access checks makes tests fail. | Temporarily allowing every caller in `canManage` caused 2 failures, and in `requireAdmin` caused 3. Both changes were reverted. | Passed. |
 | Schema migrations | Applying and reverting leaves the schema unchanged. | For `001_pothole_review` and `002_detection_user`, `pg_dump -s` before applying matched the result after reverting, and the migrated schema matched a fresh `schema.sql`. | Passed on PostGIS. |
@@ -92,7 +92,7 @@ Implemented features still require execution-based tests; implementation alone i
 | Community confirmations | Counts appear before voting; an earlier answer is shown and can change. | With the real marker component and a stubbed Google Maps library, anonymous counts, the highlighted answer, changing it, and persistence after reload all worked. Rejected and unknown reports returned 404. | Passed; live Google Maps not rendered. |
 | Decision reaches open maps | A review publishes a pothole update. | A live event-stream client received `potholes.updated` after a decision. | Event delivery passed; the visible map refresh was not observed. |
 
-**Not verified:** Google sign-in, the `Secure` cookie flag and HTTPS in a deployed environment, rendering on the live Google Maps service, a real camera capture through Roboflow, and behavior on physical mobile devices. Automated tests mock the database; the PostGIS integration tests are tracked separately in issue #28.
+**Not verified:** Google sign-in, the `Secure` cookie flag and HTTPS in a deployed environment, rendering on the live Google Maps service, a real camera capture through Roboflow, and behavior on physical mobile devices. Automated tests in this section mock the database; PostGIS integration tests are not part of this suite.
 
 For the remaining API and database scenarios, we plan to run the backend with a test PostGIS database, send requests with valid and invalid inputs, and verify both response status/body and resulting database state. For browser flows, we plan to use test accounts and mock browser permissions such as camera and location. We will record the test date, setup, steps, expected result, actual result, and any defects.
 
@@ -107,7 +107,7 @@ For the remaining API and database scenarios, we plan to run the backend with a 
 | FR-07 | Create reports at nearby and distant coordinates, query the area, and verify nearby duplicates are matched while distant reports remain separate. | Nearby query validation and SQL parameter handling pass mocked automated tests. Live PostGIS spatial and duplicate behavior remain **unverified**. |
 | FR-08 | Submit a report while the map is open and verify the expected notification and marker update appear. | Backend event delivery test passes and the map subscribes/refreshes in source; the full report-to-open-map flow is **not verified end-to-end**. |
 | FR-09 | Confirm a report as a user, submit a repeat confirmation, and verify the saved confirmation and community feedback. | Viewing counts, viewing and changing the user's own answer, and persistence after reload were verified with a stubbed map library (section 3.2). Rendering on live Google Maps is **not verified**. |
-| FR-10 | Sign in as an admin, review a report, approve/reject it, and verify the saved status; repeat as a non-admin and expect denial. | Implemented. Admin and non-admin behavior, saved decisions, and the dashboard workflow passed automated, live API, and browser checks (section 3.2). |
+| FR-10 | Sign in as an admin, review a report, approve/reject it, and verify the saved status; repeat as a non-admin and expect denial. | Admin and non-admin behavior, saved decisions, and the dashboard workflow passed automated, live API, and browser checks (section 3.2). |
 | FR-11 | Call protected operations without a token, with an invalid token, and with a valid token for a user lacking permission; verify unauthorized requests are rejected. | Missing, invalid, expired, and wrongly signed tokens, deactivated users, role checks, and ownership checks pass automated tests. Admin and detection write protection were also confirmed with live requests (section 3.2). |
 
 Next, run API integration tests against a temporary PostGIS database, then exercise browser flows with camera/location permissions and a controlled detection-service stub. Record dates, environment, inputs, expected/actual results, and defects for each run.
@@ -138,12 +138,12 @@ We have used pull requests to support peer review and have had informal walkthro
 
 This report includes a source walkthrough of the route registrations, controllers, models, schema, Compose file, package metadata, and frontend imports. It is not evidence of a formal peer review. The inspection found:
 
-1. **Remaining feature gaps:** Camera/GPS capture, detection submission, pothole list/detail reads, confirmations, and live-update subscription are present in the implementation. The admin review workflow is implemented (section 3.2). Full browser-to-database detection flows and live-service behavior still need testing.
+1. **Remaining feature gaps:** Camera/GPS capture, detection submission, pothole list/detail reads, confirmations, live-update subscription, and the admin review workflow are present in the implementation. Full browser-to-database detection flows and live-service behavior still need testing.
 2. **Frontend/backend map contract:** Source inspection shows that the frontend list request (`limit=100`) and backend list response (`{ data: [...] }` with the expected record fields) are aligned. A populated PostGIS-backed browser test is still needed to verify returned data, marker details, and photos.
-3. **Security review item:** `requireAdmin` now protects every `/api/admin` route. The JWT cookie becomes `secure` only when `NODE_ENV=production`; production configuration must set that value and HTTPS.
+3. **Security review item:** `requireAdmin` protects every `/api/admin` route. The JWT cookie becomes `secure` only when `NODE_ENV=production`; production configuration must set that value and HTTPS.
 4. **Data validation review item:** The database constrains confidence and unique confirmations; nearby lookup validates coordinates/radius/limit; detection accepts bounded JPEG/PNG bodies. Frontend response validation is present. New detection-write and confirmation routes have validation schemas, but their boundary/error cases and authorization behavior still need integration tests.
-5. **UI/API contract mismatch (resolved):** Auth pages previously read `error.response?.data?.errors[0].message`, which threw while rendering. They now use a helper that handles the `{ message }` and `{ error }` response shapes (section 3.2).
-6. **Profile placeholders:** The hard-coded `detectionSessions` value has been removed and the profile shows stored detection counts. The profile avatar button has no action handler; it should not be presented as an available avatar-upload feature.
+5. **UI/API error contract:** Auth pages read failure messages through a helper that handles the API's `{ message }` and `{ error }` response shapes (section 3.2).
+6. **Profile statistics:** The profile shows pothole and detection counts from stored rows. The profile avatar button has no action handler; it should not be presented as an available avatar-upload feature.
 7. **Schema lifecycle:** Compose mounts `schema.sql` as an initialization script. Existing database volumes must apply the scripts in `backend/db/migrations/` in numeric order for the review and detection-owner changes.
 
 **Next verification gate:** prepare known PostGIS records near the displayed map location and verify populated, empty, malformed, and failed list responses in the browser. Check markers/details/images against those records, exercise retry, and run the complete camera-to-detection-to-report-to-map flow. Also review public links, keyboard/focus behavior, mobile layouts, and visual consistency; record measured outcomes rather than inferring them from source inspection.
