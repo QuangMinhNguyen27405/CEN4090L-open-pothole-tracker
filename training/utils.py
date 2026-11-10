@@ -1,12 +1,19 @@
 import os
 import sys
+from io import BytesIO
 from pathlib import Path
+
+import yaml
+from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 BACKEND_ENV = HERE.parent / "backend" / ".env"
 
 IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".bmp", ".webp"]
 TRUE_VALUES = ["1", "true", "yes", "on"]
+
+BACKEND_MAX_SIZE = (640, 480)
+BACKEND_JPEG_QUALITY = 75
 
 
 def read_env_file(path):
@@ -55,6 +62,13 @@ def get_flag(name):
 def get_list(name, default):
     value = get_setting(name, default)
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def to_path(value):
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = HERE / path
+    return path
 
 
 def check_no_args():
@@ -106,3 +120,51 @@ def parse_label_line(line):
         return [cls, (x1 + x2) / 2, (y1 + y2) / 2, x2 - x1, y2 - y1], "polygon"
 
     return None, None
+
+
+def read_labels(label_file):
+    label_file = Path(label_file)
+    if not label_file.is_file():
+        return []
+
+    boxes = []
+    for line in label_file.read_text(encoding="utf-8").splitlines():
+        box, _ = parse_label_line(line)
+        if box is not None:
+            boxes.append(box)
+    return boxes
+
+
+def backend_preprocess(image_path):
+    with Image.open(image_path) as original:
+        img = original.convert("RGB")
+    img.thumbnail(BACKEND_MAX_SIZE)
+
+    buffer = BytesIO()
+    img.save(buffer, format="JPEG", quality=BACKEND_JPEG_QUALITY)
+    jpeg_bytes = buffer.getvalue()
+
+    with Image.open(BytesIO(jpeg_bytes)) as decoded:
+        return jpeg_bytes, decoded.convert("RGB")
+
+
+def resolve_split_dir(data_yaml, split):
+    data_yaml = Path(data_yaml).resolve()
+    data = yaml.safe_load(data_yaml.read_text(encoding="utf-8"))
+
+    key = "val" if split in ["val", "valid"] else split
+    if key not in data:
+        sys.exit(f"'{key}' is not in {data_yaml}")
+
+    root = data_yaml.parent
+    if data.get("path"):
+        root = root / data["path"]
+
+    value = str(data[key])
+    if value.startswith("../"):
+        value = value[3:]
+
+    folder = Path(value)
+    if not folder.is_absolute():
+        folder = root / folder
+    return folder.resolve()
