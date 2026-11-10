@@ -9,10 +9,23 @@ import PotholeMarker from "./potholeMarker";
 import CompassMarker from "./compassMarker";
 import { useCompass } from "./authHook";
 import { Button } from "@/components/ui/button";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import CameraCapture, { type CapturedFrame } from "./cameraCapture";
-import { Compass } from "lucide-react";
+import { Camera, Compass } from "lucide-react";
 import MapNavigation from "./mapNavigation";
+
+const SignInToReport = () => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button asChild size="lg" className="w-14 h-14 rounded-full shadow-lg">
+        <Link to="/login" aria-label="Sign in to report a pothole">
+          <Camera className="h-6 w-6" />
+        </Link>
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent side="left">Sign in to report a pothole</TooltipContent>
+  </Tooltip>
+);
 
 // Keep the original map's fallback location and presentation.
 const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 };
@@ -200,7 +213,7 @@ export default function MapPage() {
             <Button aria-label="Enable compass" disabled={compassLoading} onClick={requestPermission} size="lg" className="w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg">
               <Compass className="w-6 h-6" stroke="currentColor" />
             </Button>
-        )} cameraControl={user ? <CameraCapture onCapture={resetCapture} /> : !isAuthLoading ? <Button asChild size="icon" className="w-14 h-14 rounded-full shadow-lg"><Link to="/login" aria-label="Sign in to report a pothole">Sign in</Link></Button> : null} />
+        )} cameraControl={user ? <CameraCapture onCapture={resetCapture} /> : !isAuthLoading ? <SignInToReport /> : null} />
         <div className="fixed bottom-24 left-4 right-24 z-20 flex max-h-[60vh] flex-col gap-3 overflow-y-auto sm:bottom-6 sm:left-6 sm:right-auto sm:max-w-sm">
         {compassError && <p role="status" className="rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground shadow-lg">{compassError}</p>}
         {updatesDisconnected && (
